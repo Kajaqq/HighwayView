@@ -4,14 +4,24 @@ import aiofiles
 import aiohttp
 from tqdm.asyncio import tqdm
 
-import diff_hash
-from utils import save_json, load_json, create_url, CONSTANTS, get_http_settings
+from tools.utils import load_json, create_url, get_http_settings, save_json
+import tools.diff_hash as diff_hash
+from config import CONSTANTS
 
 SEP = CONSTANTS.COMMON.SEPARATOR
 DEFAULT_RATE_LIMIT = CONSTANTS.COMMON.RATE_LIMIT
+JSON_OUTPUT_DIR = CONSTANTS.COMMON.DATA_DIR
+IMAGE_DIR = CONSTANTS.COMMON.IMG_DIR
 
 
-def get_camera_data(json_data):
+async def save_image(camera_id, ext, img_bytes, output_dir=IMAGE_DIR):
+    filename = f"{camera_id}{ext}"
+    file_path = Path.joinpath(output_dir, filename)
+    async with aiofiles.open(file_path, mode="wb") as f:
+        await f.write(img_bytes)
+
+
+def get_camera_data(json_data: dict):
     country = json_data[0]["highway"]["country"]
     if country == "IT":
         camera_ids = [
@@ -29,12 +39,12 @@ def get_camera_data(json_data):
 
 
 async def check_camera_async(
-    client, source, camera_id, camera_type, rate_limiter, download, output_dir
+    client, source, camera_id, camera_type, rate_limiter, download, output_dir=None
 ):
     if source in ["ES", "FR"]:
         url, ext = create_url(source, camera_id, camera_type)
-    elif source in ["IT"]:
-        url = camera_type
+    elif source == "IT":
+        url = camera_type  # Special case for Italy where urls are in the data directly
         ext = CONSTANTS.ITALY.VIDEO_EXT
     else:
         raise ValueError(f"Unknown source: {source}")
@@ -46,27 +56,20 @@ async def check_camera_async(
                 response_bytes = await response.read()
                 status_code = response.status
             if len(response_bytes) < 1000:
-                raise aiohttp.ClientPayloadError(
+                raise aiohttp.ClientPayloadError(  # noqa: TRY301
                     f"Response too small: {len(response_bytes)} bytes"
                 )
             if not download:
-                return {"id": camera_id, "alive": status_code}
-            filename = f"{camera_id}{ext}"
-            file_path = Path.joinpath(output_dir, filename)
-            async with aiofiles.open(file_path, mode="wb") as f:
-                await f.write(response_bytes)
-            return {"id": camera_id, "alive": status_code}
+                return {"id": camera_id, "status": status_code}
+            else:
+                await save_image(camera_id, ext, response_bytes, output_dir)
+                return {"id": camera_id, "status": status_code}  # noqa: TRY300
 
-        except (
-            aiohttp.ClientError,
-            asyncio.TimeoutError,
-            aiohttp.ClientPayloadError,
-        ):
-            # print(f'Error checking camera {camera_id}: {e}')
-            return {"id": camera_id, "alive": False, "len": len(response_bytes)}
+        except TimeoutError, aiohttp.ClientError, aiohttp.ClientPayloadError:
+            return {"id": camera_id, "status": False, "len": len(response_bytes)}
 
 
-def remove_offline_cameras(camera_json, errored_cameras, output_file: Path):
+def remove_offline_cameras(camera_json, errored_cameras):
     errored_ids = set(errored_cameras)
     removed_count = 0
 
@@ -88,42 +91,48 @@ def remove_offline_cameras(camera_json, errored_cameras, output_file: Path):
             camera_json.remove(highway_item)
             print(f"Removed empty highway: {highway.get('name', 'Unknown')}")
 
-    save_json(camera_json, output_file)
     print(SEP)
-    print(f"Total removed: {removed_count}. Filtered data saved to {output_file}")
+    print(f"Total removed: {removed_count}.")
+    return camera_json
 
 
-async def main(camera_json, rate_limit=DEFAULT_RATE_LIMIT, download=True):
-    # Download camera data
+async def main(
+    camera_json,
+    rate_limit=DEFAULT_RATE_LIMIT,
+    download=True,
+    save_file=False,
+    output_dir=JSON_OUTPUT_DIR,
+    image_dir=IMAGE_DIR,
+):
+    # Get camera data from json output
     source, camera_ids = get_camera_data(camera_json)
 
-    # Set up the output path
-    output_dir = Path("data/images/")
-    if download and not output_dir.exists():
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-    rate_limiter = asyncio.Semaphore(rate_limit)
+    if download and not image_dir.exists():
+        image_dir.mkdir(parents=True, exist_ok=True)
 
     # Set up aiohttp client
-    timeout, connector = get_http_settings(rate_limit=rate_limit)
+    rate_limiter = asyncio.Semaphore(rate_limit)
+    headers, timeout, connector = get_http_settings(rate_limit=rate_limit)
 
     # Run the checks
-    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as client:
+    async with aiohttp.ClientSession(
+        headers=headers, connector=connector, timeout=timeout
+    ) as session:
         tasks = [
             check_camera_async(
-                client, source, cam_id, cam_type, rate_limiter, download, output_dir
+                session, source, cam_id, cam_type, rate_limiter, download, IMAGE_DIR
             )
             for cam_id, cam_type in camera_ids
         ]
         results = await tqdm.gather(*tasks, desc="Checking cameras", unit="cam")
 
     # Separate successful and failed cameras
-    alive_cameras = [res["id"] for res in results if res["alive"]]
-    errored_cameras = [res["id"] for res in results if not res["alive"]]
-    probably_offline_cams = ""
+    alive_cameras = [res["id"] for res in results if res["status"]]
+    errored_cameras = [res["id"] for res in results if not res["status"]]
     if download:
         print("Verifying sample images...")
-        probably_offline_cams = diff_hash.folder_hash(output_dir)
+        probably_offline_cams = diff_hash.folder_hash(image_dir)
+        print(f"{len(probably_offline_cams)} cameras are probably offline.")
         errored_cameras.extend(probably_offline_cams)
         alive_cameras = list(set(alive_cameras) - set(probably_offline_cams))
 
@@ -131,15 +140,24 @@ async def main(camera_json, rate_limit=DEFAULT_RATE_LIMIT, download=True):
         print(SEP)
         print("Filtering offline cameras")
         print(SEP)
-        output_dir = "data/"
-        output_file = Path(output_dir + f"cameras_{source.lower()}_online.json")
-        remove_offline_cameras(camera_json, errored_cameras, output_file)
-        alive_percent = len(alive_cameras) / len(camera_ids) * 100
-        print(
-            f"{len(alive_cameras)}/{len(camera_ids)} ({alive_percent:.2f}%) cameras are online."
-        )
+        online_cams = remove_offline_cameras(camera_json, errored_cameras)
+        camera_json = online_cams
+
+    alive_percent = len(alive_cameras) / len(camera_ids) * 100
+    print(
+        f"{len(alive_cameras)}/{len(camera_ids)} ({alive_percent:.2f}%) cameras are online."
+    )
+
+    if save_file:
+        filename = f"cameras_{source.lower()}_online.json"
+        save_path = Path.joinpath(output_dir, filename)
+        save_json(camera_json, save_path)
+        print(SEP)
+        print(f"Saved alive cameras json file to: {filename}")
+
+    return camera_json
 
 
 if __name__ == "__main__":
-    camera_file = load_json("data/cameras_fr.json")
+    camera_file = load_json("data/spain_original.json")
     asyncio.run(main(camera_json=camera_file))

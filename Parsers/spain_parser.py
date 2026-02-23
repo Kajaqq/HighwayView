@@ -3,17 +3,17 @@ from base64 import b64decode
 from collections import defaultdict
 from pathlib import Path
 
-from utils import download_post, save_json, xor_decode, CONSTANTS
+from tools.utils import download_post, save_json, xor_decode
+from config import CONSTANTS
 
-BASE_URL = CONSTANTS.SPAIN.BASE_URL
-DATA_URL = BASE_URL + CONSTANTS.SPAIN.CAMERA_API
+DATA_URL = CONSTANTS.SPAIN.CAMERA_API
 XOR_KEY = CONSTANTS.SPAIN.XOR_KEY
 
 
 async def get_camera_data():
     download_link = DATA_URL
-    data = await download_post(download_link)
-    decoded_data = decode_data(data)
+    xored_data = await download_post(download_link)
+    decoded_data = decode_data(xored_data)
     return decoded_data
 
 
@@ -29,10 +29,17 @@ def decode_data(camaras_data):
     return json_text
 
 
-def parse_camera_data(json_data, output_file=None):
+async def parse_camera_data(json_data):
     try:
         raw_data = json.loads(json_data)
+    except json.JSONDecodeError:
+        print("Error: Failed to decode the input JSON file.")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred during JSON parsing: {e}")
+        return None
 
+    try:
         grouped_highways = defaultdict(list)
         camaras = raw_data.get("camaras") or []
         for cam in camaras:
@@ -42,7 +49,7 @@ def parse_camera_data(json_data, output_file=None):
                     "camera_id": cam.get("idCamara"),
                     "camera_km_point": cam.get("pk"),
                     "camera_view": cam.get("sentido"),
-                    "camera_type": "",
+                    "camera_type": "img",
                     "coords": {"X": cam.get("coordX"), "Y": cam.get("coordY")},
                 }
             )
@@ -54,25 +61,28 @@ def parse_camera_data(json_data, output_file=None):
 
         print(f"Successfully parsed {len(camaras)} cameras.")
         print(f"Data grouped by {len(final_output)} highways.")
-        if output_file:
-            print(f"Output saved to '{output_file}'.")
-            save_json(final_output, output_file)
-        return final_output
-    except json.JSONDecodeError:
-        print("Error: Failed to decode the input JSON file.")
+
+        if final_output:
+            return final_output
+
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+        return None
 
 
-async def get_parsed_data(output_file=None):
+async def get_parsed_data(output_file=None, output_folder=None):
     camera_data = await get_camera_data()
-    spain_data = parse_camera_data(camera_data, output_file)
+    spain_data = await parse_camera_data(camera_data)
+    if output_file:
+        save_json(spain_data, output_file)
+    elif output_folder:
+        save_json(spain_data, output_folder / "cameras_es_gov.json")
     return spain_data
 
 
 if __name__ == "__main__":
     import asyncio
 
-    OUTPUT_DIR = Path("data/cameras_es_gov.json")
-    camera_data = asyncio.run(get_camera_data())
-    parse_camera_data(camera_data, OUTPUT_DIR)
+    OUTPUT_DIR = Path("../data/cameras_es_gov.json")
+    data = asyncio.run(get_camera_data())
+    asyncio.run(parse_camera_data(data))

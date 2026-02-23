@@ -1,13 +1,15 @@
 import asyncio
-
 import aiohttp
-from utils import CONSTANTS, get_http_settings, download
 import re
 
-BASE_URL = CONSTANTS.FRANCE.OTHER.BASE_URL
-AUTH_URL = CONSTANTS.FRANCE.OTHER.AUTH_URL
+from tools.utils import get_http_settings, download
+from config import CONSTANTS
+
+
+BASE_URL = CONSTANTS.FRANCE.ASFA.BASE_URL
+AUTH_URL = CONSTANTS.FRANCE.ASFA.AUTH_URL
 HTTPS_PREFIX = CONSTANTS.COMMON.HTTPS_PREFIX
-CAMERA_SUFFIX = CONSTANTS.FRANCE.OTHER.CAMERA_SUFFIX
+CAMERA_SUFFIX = CONSTANTS.FRANCE.ASFA.CAMERA_SUFFIX
 
 
 async def get_auth_key(session, url):
@@ -95,25 +97,24 @@ def assemble_url(phase2_list, var_values):
         final_path = "".join(var_values.get(name, "") for name in var_names)
         full_url = HTTPS_PREFIX + final_path + CAMERA_SUFFIX
     else:
-        raise ValueError("Could not find descriptor line in phase 2 list.")
+        raise ValueError("d")
     return full_url
 
 
 # noinspection PyShadowingNames
-async def main():
-    timeout, connector = get_http_settings()
-    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+async def get_complete_url():
+    headers, timeout, connector = get_http_settings()
+    async with aiohttp.ClientSession(
+        headers=headers, connector=connector, timeout=timeout
+    ) as session:
         auth_key = await get_auth_key(session, BASE_URL)
         phase_2_url = await get_phase2(session, auth_key)
         phase_2_list = await parse_phase2(session, phase_2_url)
         resolved_vars = resolve_js_variables(phase_2_list)
         full_url = assemble_url(phase_2_list, resolved_vars)
-        camera_data = await download(url=full_url, session=session)
-    return camera_data
+    return full_url
 
 
 if __name__ == "__main__":
-    js_data = asyncio.run(main())
-    with open("data/webcams_fr_other.js", "w", encoding="utf-8") as f:
-        f.write(js_data)
-        print("Downloaded France js data to webcams_fr_other.js")
+    asfa_data = asyncio.run(get_complete_url())
+    print(f"ASFA data URL: {asfa_data}")

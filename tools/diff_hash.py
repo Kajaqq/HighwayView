@@ -6,7 +6,7 @@ import pybktree
 import ffmpeg
 import ffmpeg.filters
 from PIL import Image
-from utils import CONSTANTS
+from config import CONSTANTS
 
 SEP = CONSTANTS.COMMON.SEPARATOR
 IMAGE_EXTENSIONS = CONSTANTS.COMMON.IMAGE_EXTENSIONS
@@ -25,15 +25,12 @@ def get_video_frame(video_file: Path):
     video_file.unlink()
 
 
-# print(f'Processed {video_file.name}')
-
-
 def get_image_hash(img_file):
     """Opens an image and returns its dhash bit integer."""
     try:
+        img_file = Path(img_file)
         with Image.open(img_file) as img:
             h_bits = dhash.dhash_int(img, size=8)
-            #  print(Camera(h_bits, img_file.stem))
             return Camera(h_bits, img_file.stem)
 
     except Exception as e:
@@ -81,8 +78,6 @@ def main(file_path=None):
         results = list(executor.map(get_image_hash, image_files))
 
     hash_list = [r for r in results if r is not None]
-
-    # print(f'Finished hashing {len(hash_list)} images.')
 
     if not hash_list:
         print("No files processed.")
