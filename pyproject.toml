@@ -1,19 +1,33 @@
 [project]
-name = "CameraScrapper"
-version = "0.1.0"
+name = "CameraParser"
+version = "0.2.0"
 description = "Gets EU Traffic cams into a readable format sorted by highways"
 requires-python = ">=3.14"
+target-version = "py314"
 dependencies = [
     "aiofiles>=25.1.0",
     "dhash>=1.4",
-    "pillow>=12.1.0",
+    "pillow>=12.1.1",
     "pybktree>=1.1",
-    "ruff>=0.14.14",
-    "tqdm>=4.67.1",
+    "ruff>=0.15.2",
+    "tqdm>=4.67.3",
     "typed-ffmpeg>=3.11",
     "tzdata>=2025.3",
     "lambert==1.0.0",
     "pip-system-certs>=5.3",
     "aiohttp>=3.13.3",
     "aiodns>=4.0.0",
+    "natsort>=8.4.0",
 ]
+
+[tool.ruff.lint]
+extend-select = [
+    "UP",  # pyupgrade
+    "ASYNC",# flake8-async
+    "INP",
+    "PTH",
+    "PERF",
+    "FURB",
+    "TRY"
+]
+ignore = ['TRY003']
