@@ -41,13 +41,11 @@ def get_camera_data(json_data: dict):
 async def check_camera_async(
     client, source, camera_id, camera_type, rate_limiter, download, output_dir=None
 ):
-    if source in ["ES", "FR"]:
+    if source != "IT":
         url, ext = create_url(source, camera_id, camera_type)
-    elif source == "IT":
+    else:
         url = camera_type  # Special case for Italy where urls are in the data directly
         ext = CONSTANTS.ITALY.VIDEO_EXT
-    else:
-        raise ValueError(f"Unknown source: {source}")
     async with rate_limiter:
         response_bytes = b""
         try:
@@ -65,7 +63,7 @@ async def check_camera_async(
                 await save_image(camera_id, ext, response_bytes, output_dir)
                 return {"id": camera_id, "status": status_code}  # noqa: TRY300
 
-        except TimeoutError, aiohttp.ClientError, aiohttp.ClientPayloadError:
+        except (TimeoutError, aiohttp.ClientError, aiohttp.ClientPayloadError):
             return {"id": camera_id, "status": False, "len": len(response_bytes)}
 
 

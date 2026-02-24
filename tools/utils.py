@@ -62,6 +62,7 @@ async def fetch_response(
             headers, timeout_ctx, connector = get_http_settings(
                 timeout_int=http_timeout
             )
+
             async with aiohttp.ClientSession(
                 headers=headers, timeout=timeout_ctx, connector=connector
             ) as new_session:
@@ -162,7 +163,10 @@ def create_url(base, camera_id, camera_type) -> tuple[str, str | None]:
         base_url = CONSTANTS.SPAIN.CAMERA_URL
         ext = CONSTANTS.SPAIN.IMAGE_EXT
         return f"{base_url}{camera_id}{ext}", ext
-
+    if base == "UK":
+        base_url = CONSTANTS.UK.CAMERA_URL
+        ext = CONSTANTS.UK.IMAGE_EXT
+        return f"{base_url}{camera_id}{ext}", ext
     else:
         raise ValueError("Invalid data")
 

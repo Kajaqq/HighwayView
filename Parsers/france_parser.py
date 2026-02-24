@@ -56,9 +56,9 @@ def _format_highway_output(grouped_highways):
     ]
 
 
-def parse_gov_cameras(baguettes):
+def parse_gov_cameras(gov_baguettes):
     try:
-        raw_data = json.loads(baguettes)
+        raw_data = json.loads(gov_baguettes)
     except (json.JSONDecodeError, Exception) as e:
         print(f"Error decoding Gov JSON: {e}")
         return []

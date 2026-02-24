@@ -256,4 +256,9 @@ class CONSTANTS:
         pass
 
     class UK:
-        pass
+        EARTH_MAX_COORDS = "-180,-90,180,90"
+        BASE_URL = "https://www.trafficengland.com/"
+        CAMERA_API_URL = BASE_URL + f"api/cctv/getToBounds?bbox={EARTH_MAX_COORDS}"
+        CAMERA_URL = "https://public.highwaystrafficcameras.co.uk/cctvpublicaccess/images/"
+        IMAGE_EXT = ".jpg"
+        RATE_LIMIT = 125

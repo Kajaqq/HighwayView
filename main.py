@@ -1,7 +1,7 @@
 import asyncio
 from argparse import Namespace
 
-from Parsers import france_parser, italy_parser, spain_parser
+from Parsers import france_parser, italy_parser, spain_parser, uk_parser
 from tools.camera_check import main as camera_check
 from config import CONSTANTS
 from tools.create_camera_loop import filter_cameras as create_loop
@@ -11,6 +11,7 @@ SEP = CONSTANTS.COMMON.SEPARATOR
 DEFAULT_RATE_LIMIT = CONSTANTS.COMMON.RATE_LIMIT
 SPAIN_RATE_LIMIT = CONSTANTS.SPAIN.RATE_LIMIT
 ITALY_RATE_LIMIT = CONSTANTS.ITALY.RATE_LIMIT
+UK_RATE_LIMIT = CONSTANTS.UK.RATE_LIMIT
 DEFAULT_INTERVAL = CONSTANTS.COMMON.SLIDESHOW_INTERVAL
 
 JSON_OUTPUT_DIR = CONSTANTS.COMMON.DATA_DIR
@@ -58,7 +59,11 @@ async def get_camera_data(country, save_raw, save_checked, output_dir):
 
     elif country == "Italy":
         country_data = await italy_parser.get_parsed_data(output_folder=save_raw)
-        rate_limit = ITALY_RATE_LIMIT
+
+    elif country == "UK":
+        country_data = await uk_parser.get_parsed_data(output_folder=save_raw)
+        rate_limit = UK_RATE_LIMIT
+
     else:
         raise ValueError(f"Invalid country: {country}")
 
@@ -98,6 +103,9 @@ async def main():
     looped_data = create_loop(input_data=italy_data, save_loop=save_loop)
     if looped_data and create_html:
         create_html_files(looped_data, HTML_OUTPUT_DIR)
+
+    ## UK
+    await get_camera_data("UK", save_raw, save_checked, default_dir)
 
 
 if __name__ == "__main__":
