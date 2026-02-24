@@ -184,7 +184,7 @@ class CONSTANTS:
         ]
         XOR_KEY = "K"
         IMAGE_EXT = ".jpg"
-        RATE_LIMIT = 200
+        RATE_LIMIT = 150
 
     class ITALY:
         BASE_URL = "https://viabilita.autostrade.it/json/webcams.json"

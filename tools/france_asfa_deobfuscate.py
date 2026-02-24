@@ -1,4 +1,4 @@
-import asyncio
+import winloop
 import aiohttp
 import re
 
@@ -116,5 +116,5 @@ async def get_complete_url():
 
 
 if __name__ == "__main__":
-    asfa_data = asyncio.run(get_complete_url())
+    asfa_data = winloop.run(get_complete_url())
     print(f"ASFA data URL: {asfa_data}")

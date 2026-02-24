@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 import aiofiles
 import aiohttp
+import winloop
 from tqdm.asyncio import tqdm
 
 from tools.utils import load_json, create_url, get_http_settings, save_json
@@ -13,6 +14,7 @@ DEFAULT_RATE_LIMIT = CONSTANTS.COMMON.RATE_LIMIT
 JSON_OUTPUT_DIR = CONSTANTS.COMMON.DATA_DIR
 IMAGE_DIR = CONSTANTS.COMMON.IMG_DIR
 
+winloop.install()
 
 async def save_image(camera_id, ext, img_bytes, output_dir=IMAGE_DIR):
     filename = f"{camera_id}{ext}"
@@ -158,4 +160,4 @@ async def main(
 
 if __name__ == "__main__":
     camera_file = load_json("data/spain_original.json")
-    asyncio.run(main(camera_json=camera_file))
+    winloop.run(main(camera_json=camera_file))

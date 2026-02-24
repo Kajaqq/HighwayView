@@ -1,4 +1,5 @@
 import asyncio
+import winloop
 import json
 import aiohttp
 import aiofiles
@@ -96,4 +97,4 @@ if __name__ == "__main__":
     out_asfa = data_dir / "cameras_fr_asfa.js"
     out_gov = data_dir / "cameras_fr_gov.json"
 
-    asyncio.run(get_france_data(output_file_gov=out_gov, output_file_asfa=out_asfa))
+    winloop.run(get_france_data(output_file_gov=out_gov, output_file_asfa=out_asfa))

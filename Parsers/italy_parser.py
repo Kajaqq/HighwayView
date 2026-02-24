@@ -1,4 +1,4 @@
-import asyncio
+import winloop
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -354,4 +354,4 @@ async def get_parsed_data(output_file=None, output_folder=None):
 
 if __name__ == "__main__":
     output = Path(__file__).parent.parent / "data" / "cameras_it.json"
-    asyncio.run(get_parsed_data(output))
+    winloop.run(get_parsed_data(output))

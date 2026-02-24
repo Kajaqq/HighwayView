@@ -1,4 +1,5 @@
 import json
+import winloop
 from collections import defaultdict
 from pathlib import Path
 
@@ -58,8 +59,6 @@ async def get_parsed_data(output_file=None, output_folder=None):
 
 
 if __name__ == "__main__":
-    import asyncio
-
     OUTPUT_DIR = Path("../data/cameras_es_gov.json")
-    data = asyncio.run(get_spain_data())
-    asyncio.run(parse_camera_data(data))
+    data = winloop.run(get_spain_data())
+    winloop.run(parse_camera_data(data))

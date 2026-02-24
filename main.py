@@ -1,4 +1,4 @@
-import asyncio
+import winloop
 from argparse import Namespace
 
 from Parsers import france_parser, italy_parser, spain_parser, uk_parser
@@ -109,4 +109,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+   winloop.run(main())

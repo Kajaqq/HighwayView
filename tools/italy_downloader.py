@@ -1,3 +1,4 @@
+import winloop
 import asyncio
 from tools.utils import download
 from config import CONSTANTS
@@ -78,5 +79,5 @@ async def get_italy_data():
 
 
 if __name__ == "__main__":
-    data = asyncio.run(get_italy_data())
+    data = winloop.run(get_italy_data())
     print(f"Downloaded data keys: {list(data.keys())}")

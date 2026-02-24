@@ -1,4 +1,4 @@
-import asyncio
+import winloop
 from collections import defaultdict
 
 from tools.uk_downloader import get_uk_data
@@ -44,4 +44,4 @@ async def get_parsed_data(output_file=None, output_folder=None):
     return uk_data
 
 if __name__ == "__main__":
-    asyncio.run(get_parsed_data())
+    winloop.run(get_parsed_data())

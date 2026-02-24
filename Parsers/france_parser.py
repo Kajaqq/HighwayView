@@ -1,7 +1,7 @@
 import ast
 import json
 import re
-import asyncio
+import winloop
 from collections import defaultdict
 
 from tools.utils import (
@@ -196,7 +196,7 @@ def save_raw_data(output_folder, merged_data, asfa_raw, gov_raw):
 
 
 if __name__ == "__main__":
-    asyncio.run(
+    winloop.run(
         get_parsed_data(
             output_file_gov="data/cameras_fr_gov.json",
             output_file_asfa="data/cameras_fr_asfa.json",
