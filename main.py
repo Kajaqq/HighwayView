@@ -21,7 +21,9 @@ SPAIN_LOOP = CONSTANTS.SPAIN.HIGHWAY_SEQUENCE
 FRANCE_LOOP = CONSTANTS.FRANCE.HIGHWAY_SEQUENCE
 
 
-def create_html_files(input_data, output_dir, camera_ids=None, interval=DEFAULT_INTERVAL):
+def create_html_files(
+    input_data, output_dir, camera_ids=None, interval=DEFAULT_INTERVAL
+):
     if interval < 3:
         print(f"Warning: Interval {interval}s is too short. Setting to minimum: 3s")
         interval = 3
@@ -87,25 +89,28 @@ async def main():
 
     # SPAIN
     spain_data = await get_camera_data("Spain", save_raw, save_checked, default_dir)
-    looped_data = create_loop(input_data=spain_data, save_loop=save_loop)
-    if looped_data and create_html:
-        create_html_files(looped_data, HTML_OUTPUT_DIR)
+    selected_cameras = create_loop(spain_data)
+    if selected_cameras and create_html:
+        create_html_files(spain_data, HTML_OUTPUT_DIR, camera_ids=selected_cameras)
 
     # FRANCE
     france_data = await get_camera_data("France", save_raw, save_checked, default_dir)
-    looped_data = create_loop(input_data=france_data, save_loop=save_loop)
-    if looped_data and create_html:
-        create_html_files(looped_data, HTML_OUTPUT_DIR)
+    selected_cameras = create_loop(france_data)
+    if selected_cameras and create_html:
+        create_html_files(france_data, HTML_OUTPUT_DIR, camera_ids=selected_cameras)
 
     ## ITALY
     italy_data = await get_camera_data("Italy", save_raw, save_checked, default_dir)
-    looped_data = create_loop(input_data=italy_data, save_loop=save_loop)
-    if looped_data and create_html:
-        create_html_files(looped_data, HTML_OUTPUT_DIR)
+    selected_cameras = create_loop(italy_data)
+    if selected_cameras and create_html:
+        create_html_files(italy_data, HTML_OUTPUT_DIR, camera_ids=selected_cameras)
 
     ## UK
-    await get_camera_data("UK", save_raw, save_checked, default_dir)
+    uk_data = await get_camera_data("UK", save_raw, save_checked, default_dir)
+    selected_cameras = create_loop(uk_data)
+    if selected_cameras and create_html:
+        create_html_files(uk_data, HTML_OUTPUT_DIR, camera_ids=selected_cameras)
 
 
 if __name__ == "__main__":
-   winloop.run(main())
+    winloop.run(main())

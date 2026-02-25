@@ -18,6 +18,7 @@ def decode_data(camaras_data):
     print("Successfully downloaded camera data.")
     return json_text
 
+
 async def get_spain_data():
     download_link = DATA_URL
     xored_data = await download_post(download_link)

@@ -16,6 +16,7 @@ IMAGE_DIR = CONSTANTS.COMMON.IMG_DIR
 
 winloop.install()
 
+
 async def save_image(camera_id, ext, img_bytes, output_dir=IMAGE_DIR):
     filename = f"{camera_id}{ext}"
     file_path = Path.joinpath(output_dir, filename)
@@ -65,7 +66,7 @@ async def check_camera_async(
                 await save_image(camera_id, ext, response_bytes, output_dir)
                 return {"id": camera_id, "status": status_code}  # noqa: TRY300
 
-        except (TimeoutError, aiohttp.ClientError, aiohttp.ClientPayloadError):
+        except TimeoutError, aiohttp.ClientError, aiohttp.ClientPayloadError:
             return {"id": camera_id, "status": False, "len": len(response_bytes)}
 
 

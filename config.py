@@ -152,34 +152,35 @@ class CONSTANTS:
             CAMERA_URL = (
                 "https://gieat.viewsurf.com?id={camera_id}&action=mediaRedirect"
             )
+
         class HighwaySort:
             NORTH_SOUTH = [
-            "A-1",
-            "A-31",
-            "A-6",
-            "A-7",
-            "A-75",
-            "A-71",
-            "A-20",
-            "A-63",
-            "N-10",
-            "A-10",
-            "A-28",
-        ]
+                "A-1",
+                "A-31",
+                "A-6",
+                "A-7",
+                "A-75",
+                "A-71",
+                "A-20",
+                "A-63",
+                "N-10",
+                "A-10",
+                "A-28",
+            ]
             EAST_WEST = [
-            "A-16",
-            "A-2",
-            "A-26",
-            "A-29",
-            "A-4",
-            "A-36",
-            "A-40",
-            "A-43",
-            "A-48",
-            "A-62",
-            "A-11",
-            "A-8",
-        ]
+                "A-16",
+                "A-2",
+                "A-26",
+                "A-29",
+                "A-4",
+                "A-36",
+                "A-40",
+                "A-43",
+                "A-48",
+                "A-62",
+                "A-11",
+                "A-8",
+            ]
             RINGS = ["A-630"]  # Bordeaux Ring
 
     class SPAIN:
@@ -214,6 +215,7 @@ class CONSTANTS:
         XOR_KEY = "K"
         IMAGE_EXT = ".jpg"
         RATE_LIMIT = 150
+
         class HighwaySort:
             NORTH_SOUTH = ["A-1", "AP-7", "A-7", "AP-68", "A-68", "A-6", "A-4"]
             EAST_WEST = [
@@ -246,13 +248,11 @@ class CONSTANTS:
             ("A22", 8),  # Brennero (Km 0) -> Bolzano -> Verona (Km 313)
             # Austria (East)
             ("A23", 4),  # Tarvisio (Km 119) -> Udine
-
             # --- EAST-WEST ---
             # The "German Link" (Milan - Verona - Venice)
             ("A04_CENTER", 5),  # Brescia - Padova
             # The Eastern Gate (Venice - Trieste)
             ("A04_EAST", 5),  # Venice - Trieste
-
             # --- NORTH-SOUTH ---
             # Milan to Bologna
             ("A01", 6),  # Select from range Km 0 - 180
@@ -262,7 +262,6 @@ class CONSTANTS:
             # The Apennines (Florence/Rome)
             ("A01", 5),  # Select from range Km 240 - 300 (Mountain Pass)
             ("A01", 5),  # Select from range Km 300 - 550 (Florence - Rome)
-
             # --- PORTS & SOUTH ---
             # Liguria/Tyrrhenian
             ("A12", 4),  # Genoa - Livorno
@@ -320,7 +319,9 @@ class CONSTANTS:
         EARTH_MAX_COORDS = "-180,-90,180,90"
         BASE_URL = "https://www.trafficengland.com/"
         CAMERA_API_URL = BASE_URL + f"api/cctv/getToBounds?bbox={EARTH_MAX_COORDS}"
-        CAMERA_URL = "https://public.highwaystrafficcameras.co.uk/cctvpublicaccess/images/"
+        CAMERA_URL = (
+            "https://public.highwaystrafficcameras.co.uk/cctvpublicaccess/images/"
+        )
         IMAGE_EXT = ".jpg"
         RATE_LIMIT = 125
         class HighwaySort:
@@ -359,7 +360,6 @@ class CONSTANTS:
                 "M275",
                 "M621",
             ]
-
             EAST_WEST = [
                 "A2",
                 "A5",
@@ -388,7 +388,6 @@ class CONSTANTS:
                 "M180",
                 "M602",
             ]
-
             RINGS = [
                 "M25",  # London Orbital
                 "M60",  # Manchester Outer Ring

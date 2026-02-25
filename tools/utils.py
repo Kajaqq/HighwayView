@@ -209,5 +209,6 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     # Clamp value to 1.0 to handle floating-point errors (prevents ValueError in asin)
     return 2 * r * math.asin(min(1.0, math.sqrt(a)))
 
+
 def get_country(camera_data):
     return camera_data[0]["highway"]["country"]
