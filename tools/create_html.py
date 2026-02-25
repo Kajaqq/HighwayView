@@ -15,55 +15,64 @@ def get_camera_urls(
     json_data: list[dict],
     camera_ids: list[str] | None = None,
     highways: list[str] | None = None,
-    apply_sort: bool = True,
+    apply_sort: bool = False,
 ) -> tuple[list[tuple[str, str, str, int, str]], str]:
-    """
-    Extract camera URLs from JSON data.
 
-    Args:
-        :param json_data: List of highway dictionaries with camera data
-        :param camera_ids: Optional list of specific camera IDs to include
-        :param highways: Optional list of highway names to include
-        :param apply_sort: Apply natural sorting
-
-    Returns:
-        Tuple of (list of tuples (camera_id, camera_url, highway_name, camera_number, media_type), country_code)
-
-    """
-    country = json_data[0]["highway"]["country"]
-
-    # Sort highways naturally if sorting is enabled
-    if apply_sort and not camera_ids:
-        json_data = natsorted(json_data, key=lambda x: x["highway"]["name"])
-
+    country = get_country(json_data)
     cameras = []
+
+    if camera_ids:
+        camera_map = {}
+        for highway_item in json_data:
+            hw_name = highway_item["highway"]["name"]
+            for cam in highway_item["highway"]["cameras"]:
+                camera_map[cam["camera_id"]] = (cam, hw_name)
+
+        camera_number = 1
+
+        for cid in camera_ids:
+            if cid in camera_map:
+                camera, highway_name = camera_map[cid]
+
+                if country == "IT":
+                    url = camera["url"]
+                    media_type = "video"
+                else:
+                    camera_type = camera.get("camera_type", "")
+                    url, _ = create_url(country, cid, camera_type)
+                    media_type = (
+                        "video" if camera_type in ["vid", "asfa_vid"] else "image"
+                    )
+
+                cameras.append((cid, url, highway_name, camera_number, media_type))
+
+                camera_number += 1
+            else:
+                print(f"Warning: Camera ID {cid} not found in JSON data.")
+
+        return cameras, country
+
+    if apply_sort:
+        json_data = natsorted(json_data, key=lambda x: x["highway"]["name"])
 
     for highway_item in json_data:
         highway = highway_item["highway"]
         highway_name = highway["name"]
 
-        # Filter by highway if specified
         if highways and highway_name not in highways:
             continue
 
         camera_number = 0
         for camera in highway["cameras"]:
             camera_id = camera["camera_id"]
-
-            # Filter by camera_ids if specified
-            if camera_ids and camera_id not in camera_ids:
-                continue
-
             camera_number += 1
 
-            # Get camera URL and determine media type based on country
             if country == "IT":
                 url = camera["url"]
-                media_type = "video"  # Italy uses video
+                media_type = "video"
             else:
                 camera_type = camera.get("camera_type", "")
                 url, _ = create_url(country, camera_id, camera_type)
-                # Determine if it's video or image based on camera_type
                 media_type = "video" if camera_type in ["vid", "asfa_vid"] else "image"
 
             cameras.append((camera_id, url, highway_name, camera_number, media_type))
@@ -516,7 +525,7 @@ def parse_args():
         "--output_dir",
         type=str,
         default=HTML_DIR,
-        help="Output HTML file name",
+        help="Output HTML file directory",
     )
     parser.add_argument(
         "-c",
@@ -579,8 +588,6 @@ def main(args):
     if not cameras:
         print("No cameras found matching the specified criteria")
         return
-
-    # print(f"Found {len(cameras)} cameras")
 
     # Generate HTML
     html_content = generate_html(cameras, args.interval, country)
