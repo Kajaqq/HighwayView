@@ -1,7 +1,7 @@
 import winloop
 from collections import defaultdict
 
-from tools.uk_downloader import get_uk_data
+from Downloaders.uk_downloader import get_uk_data
 from tools.utils import save_json, load_json
 
 

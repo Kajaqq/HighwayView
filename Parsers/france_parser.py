@@ -8,7 +8,7 @@ from tools.utils import (
     save_json,
     convert_to_wgs84,
 )
-from tools.france_downloader import get_france_data as download_france_data
+from Downloaders.france_downloader import get_france_data as download_france_data
 from tools.merge_france_data import merge_france_data
 from config import CONSTANTS
 

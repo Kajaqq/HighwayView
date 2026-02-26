@@ -18,8 +18,6 @@ env/
 # Python version
 .python-version
 
-# UV lock file
-uv.lock
-
 # Data directory
 data/
+

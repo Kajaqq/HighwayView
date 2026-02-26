@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from tools.utils import save_json
-from tools.spain_downloader import get_spain_data
+from Downloaders.spain_downloader import get_spain_data
 
 
 async def parse_camera_data(raw_data):

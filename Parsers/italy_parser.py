@@ -5,7 +5,7 @@ from pathlib import Path
 
 from tools.utils import save_json, load_json
 from config import CONSTANTS
-from tools.italy_downloader import get_italy_data
+from Downloaders.italy_downloader import get_italy_data
 
 CAMERA_BASE_URL = CONSTANTS.ITALY.CAMERA_URL
 
