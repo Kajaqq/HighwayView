@@ -23,18 +23,21 @@ def find_asfa_duplicates(
 ) -> set[str]:
     """Identify possible ASFA camera duplicates."""
     dupes = set()
+
     for cam in asfa_cams:
         lat1, lon1 = cam["lat"], cam["lon"]
         if lat1 is None or lon1 is None:
             continue
 
-        if any(
-            (lat2 := gov_cam["lat"]) is not None
-            and (lon2 := gov_cam["lon"]) is not None
-            and (haversine_km(lat1, lon1, lat2, lon2) <= threshold_km)
-            for gov_cam in gov_cams
-        ):
-            dupes.add(cam["id"])
+        for gov_cam in gov_cams:
+            lat2, lon2 = gov_cam["lat"], gov_cam["lon"]
+            if (
+                lat2 is not None
+                and lon2 is not None
+                and haversine_km(lat1, lon1, lat2, lon2) <= threshold_km
+            ):
+                dupes.add(cam["id"])
+                break  # Stop checking once a duplicate is found
     return dupes
 
 
@@ -43,11 +46,12 @@ def filter_asfa_data(asfa_data: list[dict], dupes: set[str]) -> list[dict]:
     filtered = []
     for highway_item in asfa_data:
         highway = highway_item.get("highway", {})
-        remaining = [
+        remaining_cameras = [
             c for c in highway.get("cameras", []) if c.get("camera_id") not in dupes
         ]
-        if remaining:
-            filtered.append({"highway": {**highway, "cameras": remaining}})
+        if remaining_cameras:
+            # Create a shallow copy of the highway dict and update cameras
+            filtered.append({"highway": {**highway, "cameras": remaining_cameras}})
     return filtered
 
 
@@ -56,16 +60,21 @@ def merge_highways(gov_data: list[dict], asfa_data: list[dict]) -> list[dict]:
     Consolidate ASFA cameras into government highways or add new highways.
     Returns a new list sorted by highway name.
     """
+    merged_map = {}
 
-    merged_map = {
-        entry["highway"]["name"]: copy.deepcopy(entry)
-        for entry in gov_data
-        if entry.get("highway", {}).get("name")
-    }
+    # Pre-populate with government data
+    for entry in gov_data:
+        name = entry.get("highway", {}).get("name")
+        if name:
+            merged_map[name] = copy.deepcopy(entry)
 
+    # Merge ASFA data
     for entry in asfa_data:
-        asfa_highway = entry.get("highway", {})
-        name = asfa_highway.get("name")
+        highway = entry.get("highway", {})
+        name = highway.get("name")
+
+        if not name:
+            continue
 
         if name in merged_map:
             target_cameras = merged_map[name]["highway"].setdefault("cameras", [])
@@ -73,12 +82,13 @@ def merge_highways(gov_data: list[dict], asfa_data: list[dict]) -> list[dict]:
 
             target_cameras.extend(
                 cam
-                for cam in asfa_highway.get("cameras", [])
+                for cam in highway.get("cameras", [])
                 if cam.get("camera_id") not in existing_ids
             )
         else:
             merged_map[name] = copy.deepcopy(entry)
 
+    # Return sorted by highway name
     return [merged_map[name] for name in sorted(merged_map)]
 
 
@@ -108,6 +118,7 @@ if __name__ == "__main__":
         gov_data = load_json("../data/cameras_fr_gov.json")
         asfa_data = load_json("../data/cameras_fr_asfa.json")
         merged_file = Path("../data/cameras_fr_merged.json")
+
         merged = merge_france_data(gov_data, asfa_data)
         save_json(merged, merged_file)
         print(f"Successfully merged and saved to {merged_file}")

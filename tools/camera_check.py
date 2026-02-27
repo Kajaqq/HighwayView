@@ -5,8 +5,9 @@ import aiohttp
 import winloop
 from tqdm.asyncio import tqdm
 
-from tools.utils import load_json, create_url, get_http_settings, save_json, get_country
+from tools.utils import load_json, create_url, save_json, get_country
 import tools.diff_hash as diff_hash
+from Downloaders.base_downloader import GenericDownloader
 from config import CONSTANTS
 
 SEP = CONSTANTS.COMMON.SEPARATOR
@@ -113,7 +114,10 @@ async def main(
 
     # Set up aiohttp client
     rate_limiter = asyncio.Semaphore(rate_limit)
-    headers, timeout, connector = get_http_settings(rate_limit=rate_limit)
+    downloader = GenericDownloader(
+        timeout_int=CONSTANTS.COMMON.HTTP_TIMEOUT, rate_limit=rate_limit
+    )
+    headers, timeout, connector = downloader._get_http_settings()
 
     # Run the checks
     async with aiohttp.ClientSession(

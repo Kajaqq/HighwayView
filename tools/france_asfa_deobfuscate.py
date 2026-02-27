@@ -2,8 +2,8 @@ import winloop
 import aiohttp
 import re
 
-from tools.utils import get_http_settings, download
 from config import CONSTANTS
+from Downloaders.base_downloader import GenericDownloader
 
 
 BASE_URL = CONSTANTS.FRANCE.ASFA.BASE_URL
@@ -28,9 +28,9 @@ async def get_auth_key(session, url):
     return key
 
 
-async def get_phase2(session, key, url=AUTH_URL):
+async def get_phase2(session, key, downloader, url=AUTH_URL):
     url = url.format(key=key)
-    content = await download(url=url, session=session)
+    content = await downloader.download(url=url, session=session)
     phase2 = content.split(";")
     phase2 = [x for x in phase2 if x.startswith("WT3_SawtLinkToPhase2.src =")]
     phase2_url = phase2[0].split("'")[1]
@@ -38,8 +38,8 @@ async def get_phase2(session, key, url=AUTH_URL):
     return phase2_url
 
 
-async def parse_phase2(session, phase2_url):
-    p2 = await download(url=phase2_url, session=session)
+async def parse_phase2(session, phase2_url, downloader):
+    p2 = await downloader.download(url=phase2_url, session=session)
     return p2.split(";")
 
 
@@ -103,13 +103,14 @@ def assemble_url(phase2_list, var_values):
 
 # noinspection PyShadowingNames
 async def get_complete_url():
-    headers, timeout, connector = get_http_settings()
+    downloader = GenericDownloader()
+    headers, timeout, connector = downloader._get_http_settings()
     async with aiohttp.ClientSession(
         headers=headers, connector=connector, timeout=timeout
     ) as session:
         auth_key = await get_auth_key(session, BASE_URL)
-        phase_2_url = await get_phase2(session, auth_key)
-        phase_2_list = await parse_phase2(session, phase_2_url)
+        phase_2_url = await get_phase2(session, auth_key, downloader)
+        phase_2_list = await parse_phase2(session, phase_2_url, downloader)
         resolved_vars = resolve_js_variables(phase_2_list)
         full_url = assemble_url(phase_2_list, resolved_vars)
     return full_url

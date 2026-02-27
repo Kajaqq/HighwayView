@@ -324,6 +324,30 @@ class CONSTANTS:
         )
         IMAGE_EXT = ".jpg"
         RATE_LIMIT = 125
+        HIGHWAY_SEQUENCE = [
+            # Phase 1: Entry from Europe & London
+            ("M20", 5),
+            ("A282", 2),
+            ("M25", 8),
+            # Phase 2: The South Coast & Wales
+            ("M27", 3),
+            ("M3", 3),
+            ("M4", 6),
+            ("M5", 6),
+            # Phase 3: The Midlands Hub & East Ports
+            ("A14", 6),
+            ("M1", 10),
+            ("M42", 5),
+            # Phase 4: The Northwest & Scotland Bound
+            ("M6", 10),
+            ("M56", 3),
+            ("M60", 4),
+            # Phase 5: The Pennines & North East
+            ("M62", 6),
+            ("A1(M)", 6),
+            ("M18", 2),
+        ]
+
         class HighwaySort:
             NORTH_SOUTH = [
                 "A1",

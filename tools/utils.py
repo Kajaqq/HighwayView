@@ -2,93 +2,17 @@ import asyncio
 import datetime
 import json
 import math
-import socket
 from itertools import cycle
 from pathlib import Path
 from typing import Any
 
 import aiofiles
-import aiohttp
 from lambert import Lambert93, convertToWGS84Deg
 
 from config import CONSTANTS
 
 EARTH_RADIUS_KM = CONSTANTS.COMMON.EARTH_RADIUS_KM
 DEFAULT_HEADERS = CONSTANTS.COMMON.DEFAULT_HEADERS
-
-
-class HTTPError(Exception):
-    """Custom exception for HTTP errors"""
-
-    pass
-
-
-def get_http_settings(
-    timeout_int=CONSTANTS.COMMON.HTTP_TIMEOUT, rate_limit=CONSTANTS.COMMON.RATE_LIMIT
-):
-    headers = DEFAULT_HEADERS.copy()
-    timeout = aiohttp.ClientTimeout(total=timeout_int)
-    resolver = aiohttp.AsyncResolver(nameservers=["8.8.8.8", "1.1.1.1"])
-    connector = aiohttp.TCPConnector(
-        resolver=resolver, limit=rate_limit, ttl_dns_cache=300, family=socket.AF_INET
-    )
-    return headers, timeout, connector
-
-
-def format_error_message(method: str, url: str, error: Exception) -> str:
-    method = method.upper()
-    return f"{method} request failed for {url}: {error}"
-
-
-async def async_request(
-    session: aiohttp.ClientSession, method: str, url: str, return_type: str = "text"
-) -> tuple[bytes, int] | str:
-    async with session.request(method, url) as response:
-        response.raise_for_status()
-        if return_type == "bytes":
-            return await response.read(), response.status
-        else:
-            return await response.text()
-
-
-async def fetch_response(
-    url: str,
-    method: str,
-    http_timeout: float,
-    session: aiohttp.ClientSession | None,
-) -> str:
-    try:
-        if session is None:
-            headers, timeout_ctx, connector = get_http_settings(
-                timeout_int=http_timeout
-            )
-
-            async with aiohttp.ClientSession(
-                headers=headers, timeout=timeout_ctx, connector=connector
-            ) as new_session:
-                return await async_request(new_session, method, url)
-        else:
-            return await async_request(session, method, url)
-    except aiohttp.ClientError as e:
-        raise HTTPError(format_error_message(method, url, e)) from e
-
-
-async def download(
-    url: str,
-    http_timeout: float = CONSTANTS.COMMON.HTTP_TIMEOUT,
-    session: aiohttp.ClientSession | None = None,
-) -> str:
-    """Download content from URL with proper error handling and timeout"""
-    return await fetch_response(url, "GET", http_timeout, session)
-
-
-async def download_post(
-    url: str,
-    http_timeout: float = CONSTANTS.COMMON.HTTP_TIMEOUT,
-    session: aiohttp.ClientSession | None = None,
-) -> str:
-    """Download content via POST with proper error handling and timeout"""
-    return await fetch_response(url, "POST", http_timeout, session)
 
 
 def check_parent_dir(path: Path) -> None:
