@@ -1,8 +1,9 @@
+import copy
 import inspect
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from tools.utils import save_json_async
+from tools.utils import haversine_km, save_json_async
 
 
 class BaseParser(ABC):
@@ -48,6 +49,119 @@ class BaseParser(ABC):
         return [
             {"highway": {"name": name, "country": self.country, "cameras": cameras}}
             for name, cameras in sorted(grouped_highways.items())
+        ]
+
+    def merge_camera_data(
+        self,
+        *datasets: list[dict],
+        match_by: str = "coordinates",
+        threshold: float = 0.1,
+        check_id: bool = False,
+        check_url: bool = False,
+    ) -> list[dict]:
+        """
+        Merges one or more datasets of highway cameras, removing duplicates per highway.
+        Datasets should be ordered by priority (highest priority first).
+        """
+        if match_by not in {"coordinates", "km_point"}:
+            raise ValueError("match_by must be 'coordinates' or 'km_point'")
+
+        def _coords(cam: dict) -> tuple[float, float] | None:
+            c = cam.get("coords") or {}
+            x, y = c.get("X"), c.get("Y")
+            if x is not None and y is not None:
+                return (x, y)
+            return None
+
+        def _spatial_match(cam1: dict, cam2: dict) -> bool:
+            if match_by == "coordinates":
+                p1, p2 = _coords(cam1), _coords(cam2)
+                if p1 is None or p2 is None:
+                    return False
+                return haversine_km(p1[1], p1[0], p2[1], p2[0]) <= threshold
+            km1 = cam1.get("camera_km_point")
+            km2 = cam2.get("camera_km_point")
+            if (km1 is not None and km2 is not None) and (abs(km1 - km2) <= threshold):
+                return True
+            return False
+
+        def _is_duplicate(cam: dict, existing: dict) -> bool:
+            """Same-ID duplicate: both coords missing OR spatially close (coordinates mode only)."""
+            if _coords(cam) is None and _coords(existing) is None:
+                return True
+            return _spatial_match(cam, existing) if match_by == "coordinates" else False
+
+        # name -> list of cameras
+        merged: dict[str, list[dict]] = {}
+        countries: dict[str, str] = {}
+
+        for dataset in datasets:
+            if not dataset:
+                continue
+            for entry in dataset:
+                highway = entry.get("highway", {})
+                name = highway.get("name")
+                if not name:
+                    continue
+
+                countries.setdefault(name, highway.get("country", self.country))
+                target = merged.setdefault(name, [])
+                seen_urls = (
+                    {c.get("url") for c in target if c.get("url")}
+                    if check_url
+                    else set()
+                )
+                cameras_by_id = (
+                    {c["camera_id"]: c for c in target if c.get("camera_id")}
+                    if check_id
+                    else {}
+                )
+
+                for cam_in in highway.get("cameras", []):
+                    cam = copy.deepcopy(cam_in)
+                    url = cam.get("url")
+                    cam_id = cam.get("camera_id")
+
+                    # URL dedup
+                    if check_url and url and url in seen_urls:
+                        continue
+
+                    # ID-based dedup
+                    if check_id and cam_id:
+                        existing = cameras_by_id.get(cam_id)
+                        if existing:
+                            if _is_duplicate(cam, existing):
+                                continue
+                            # Rename to avoid ID collision
+                            i = 1
+                            new_id = f"{cam_id}_dup{i}"
+                            while new_id in cameras_by_id:
+                                i += 1
+                                new_id = f"{cam_id}_dup{i}"
+                            cam["camera_id"] = new_id
+                            cam_id = new_id
+
+                    # Spatial dedup (only when not using ID-based checks)
+                    if not check_id and any(_spatial_match(cam, c) for c in target):
+                        continue
+
+                    target.append(cam)
+                    if check_url and url:
+                        seen_urls.add(url)
+                    if cam_id:
+                        cameras_by_id[cam_id] = cam
+
+        return [
+            {
+                "highway": {
+                    "name": name,
+                    "country": countries[name],
+                    "cameras": sorted(
+                        cams, key=lambda c: c.get("camera_km_point", 0.0)
+                    ),
+                }
+            }
+            for name, cams in sorted(merged.items())
         ]
 
     async def get_parsed_data(self, output_file=None, output_folder=None):

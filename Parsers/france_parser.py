@@ -6,7 +6,6 @@ from collections import defaultdict
 
 from tools.utils import convert_to_wgs84, save_json_async
 from Downloaders.france_downloader import FranceDownloader
-from tools.merge_france_data import merge_france_data
 from config import CONSTANTS
 from Parsers.base_parser import BaseParser
 
@@ -133,7 +132,9 @@ class FranceParser(BaseParser):
         asfa_raw, gov_raw = raw_data
         gov_cameras = self.parse_gov_cameras(gov_raw) if gov_raw else []
         asfa_cameras = self.parse_asfa_cameras(asfa_raw) if asfa_raw else []
-        merged_data = merge_france_data(gov_cameras, asfa_cameras)
+        merged_data = self.merge_camera_data(
+            gov_cameras, asfa_cameras, match_by="coordinates", threshold=0.20
+        )
         print(f"Merged cameras grouped into {len(merged_data)} highways")
         return gov_cameras, asfa_cameras, merged_data
 

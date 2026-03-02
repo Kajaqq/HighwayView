@@ -248,51 +248,13 @@ class ItalyParser(BaseParser):
             else:
                 parsed_data.append(self.format_highway_output({"A04": a4_cameras}))
 
-        for entry in parsed_data:
-            unique_cameras = []
-            seen_urls = set()
-            seen_ids = {}
-
-            for cam in entry["highway"]["cameras"]:
-                url = cam.get("url", "")
-                cam_id = cam["camera_id"]
-
-                if url and url in seen_urls:
-                    continue
-
-                if cam_id in seen_ids:
-                    existing_cam = seen_ids[cam_id]
-                    coords1 = cam["coords"]
-                    coords2 = existing_cam["coords"]
-
-                    match = False
-                    if (
-                        coords1["X"] is not None
-                        and coords1["Y"] is not None
-                        and coords2["X"] is not None
-                        and coords2["Y"] is not None
-                    ):
-                        if (
-                            abs(coords1["X"] - coords2["X"]) < 0.0001
-                            and abs(coords1["Y"] - coords2["Y"]) < 0.0001
-                        ):
-                            match = True
-                    elif coords1["X"] is None and coords2["X"] is None:
-                        match = True
-
-                    if match:
-                        continue
-                    else:
-                        cam["camera_id"] = f"{cam_id}_dup"
-
-                if url:
-                    seen_urls.add(url)
-                seen_ids[cam["camera_id"]] = cam
-                unique_cameras.append(cam)
-
-            entry["highway"]["cameras"] = sorted(
-                unique_cameras, key=lambda x: x["camera_km_point"]
-            )
+        parsed_data = self.merge_camera_data(
+            parsed_data,
+            match_by="coordinates",
+            threshold=0.015,
+            check_id=True,
+            check_url=True,
+        )
 
         total_cameras = sum(len(h["highway"]["cameras"]) for h in parsed_data)
         print(f"Successfully parsed {total_cameras} cameras.")
