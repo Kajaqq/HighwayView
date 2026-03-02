@@ -7,7 +7,7 @@ from tqdm.asyncio import tqdm
 
 from tools.utils import load_json, create_url, save_json, get_country
 import tools.diff_hash as diff_hash
-from Downloaders.base_downloader import GenericDownloader
+from Downloaders.base_downloader import GenericDownloader, HTTPError
 from config import CONSTANTS
 
 SEP = CONSTANTS.COMMON.SEPARATOR
@@ -45,6 +45,11 @@ def get_camera_data(json_data: dict):
 async def check_camera(
     client, source, camera_id, camera_type, rate_limiter, download, output_dir=None
 ):
+
+    def validate_response(bytes_):
+        if len(bytes_) < 1000:
+            raise HTTPError(f"Response too small: {len(response_bytes)} bytes")
+
     if source != "IT":
         url, ext = create_url(source, camera_id, camera_type)
     else:
@@ -57,17 +62,13 @@ async def check_camera(
                 response.raise_for_status()
                 response_bytes = await response.read()
                 status_code = response.status
-            if len(response_bytes) < 1000:
-                raise aiohttp.ClientPayloadError(  # noqa: TRY301
-                    f"Response too small: {len(response_bytes)} bytes"
-                )
+                validate_response(response_bytes)
             if not download:
                 return {"id": camera_id, "status": status_code}
             else:
                 await save_image(camera_id, ext, response_bytes, output_dir)
-                return {"id": camera_id, "status": status_code}  # noqa: TRY300
-
-        except TimeoutError, aiohttp.ClientError, aiohttp.ClientPayloadError:
+                return {"id": camera_id, "status": status_code}
+        except TimeoutError, HTTPError, aiohttp.ClientError, aiohttp.ClientPayloadError:
             return {"id": camera_id, "status": False, "len": len(response_bytes)}
 
 
