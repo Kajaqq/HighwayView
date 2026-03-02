@@ -11,11 +11,6 @@ class UKDownloader(BaseDownloader):
         download_link = CAMERA_API
         return await self.download(download_link)
 
-
-async def get_uk_data():
-    downloader = UKDownloader()
-    return await downloader.get_data()
-
-
 if __name__ == "__main__":
-    winloop.run(get_uk_data())
+    downloader = UKDownloader()
+    winloop.run(downloader.get_data())

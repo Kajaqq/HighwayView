@@ -28,10 +28,6 @@ class SpainDownloader(BaseDownloader):
         return decoded_data
 
 
-async def get_spain_data():
-    downloader = SpainDownloader()
-    return await downloader.get_data()
-
-
 if __name__ == "__main__":
-    winloop.run(get_spain_data())
+    downloader = SpainDownloader()
+    winloop.run(downloader.get_data())

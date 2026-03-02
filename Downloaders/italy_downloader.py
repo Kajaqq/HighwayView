@@ -26,10 +26,11 @@ class ItalyDownloader(BaseDownloader):
                 return None
 
             json_str = html_result[start_index + len(keyword_start) : end_index].strip()
-            return json_str  # noqa: TRY300
         except Exception as e:
             print(f"Error downloading A22 data: {e}")
             return None
+        else:
+            return json_str
 
     async def get_a4_abp_raw(self):
         url = CONSTANTS.ITALY.A4.ABP.CAMERA_API
@@ -74,11 +75,7 @@ class ItalyDownloader(BaseDownloader):
         }
 
 
-async def get_italy_data():
-    downloader = ItalyDownloader()
-    return await downloader.get_data()
-
-
 if __name__ == "__main__":
-    data = winloop.run(get_italy_data())
+    downloader = ItalyDownloader()
+    data = winloop.run(downloader.get_data())
     print(f"Downloaded data keys: {list(data.keys())}")

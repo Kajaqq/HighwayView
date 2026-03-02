@@ -67,6 +67,9 @@ class BaseDownloader(ABC):
         except aiohttp.ClientError as e:
             raise HTTPError(self._format_error_message(method, url, e)) from e
 
+    async def get_settings(self):
+        return self._get_http_settings()
+
     async def download(
         self, url: str, session: aiohttp.ClientSession | None = None
     ) -> str:

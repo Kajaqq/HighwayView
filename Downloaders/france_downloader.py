@@ -66,13 +66,8 @@ class FranceDownloader(BaseDownloader):
         return asfa_camera_data, gov_camera_data
 
 
-# Keep the old function so things don't break immediately while testing
-async def get_france_data(
-    asfa_only=False, gov_only=False, output_file_gov=None, output_file_asfa=None
-):
-    downloader = FranceDownloader()
-    return await downloader.get_data(asfa_only, gov_only)
-
-
 if __name__ == "__main__":
-    winloop.run(get_france_data())
+    asfa_only = False
+    gov_only = False
+    downloader = FranceDownloader()
+    winloop.run(downloader.get_data(asfa_only, gov_only))
