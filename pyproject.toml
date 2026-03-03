@@ -5,11 +5,10 @@ description = "Gets EU Traffic cams into a readable format sorted by highways"
 requires-python = ">=3.14"
 target-version = "py314"
 dependencies = [
-    "aiofiles>=25.1.0",
     "dhash>=1.4",
     "pillow>=12.1.1",
     "pybktree>=1.1",
-    "ruff>=0.15.2",
+    "ruff>=0.15.4",
     "tqdm>=4.67.3",
     "typed-ffmpeg>=3.11",
     "tzdata>=2025.3",

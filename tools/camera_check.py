@@ -2,7 +2,6 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-import aiofiles
 import aiohttp
 import winloop
 from tqdm.asyncio import tqdm
@@ -16,8 +15,6 @@ SEP: str = CONSTANTS.COMMON.SEPARATOR
 DEFAULT_RATE_LIMIT: int = CONSTANTS.COMMON.RATE_LIMIT
 JSON_OUTPUT_DIR: Path = CONSTANTS.COMMON.DATA_DIR
 IMAGE_DIR: Path = CONSTANTS.COMMON.IMG_DIR
-
-winloop.install()
 
 
 async def save_image(
@@ -33,9 +30,8 @@ async def save_image(
         output_dir (Path, optional): The directory to save the image. Defaults to IMAGE_DIR.
     """
     filename = f"{camera_id}{ext}"
-    file_path = Path.joinpath(output_dir, filename)
-    async with aiofiles.open(file_path, mode="wb") as f:
-        await f.write(img_bytes)
+    file_path = output_dir / filename
+    await asyncio.to_thread(file_path.write_bytes, img_bytes)
 
 
 def get_camera_data(json_data: list[dict[str, Any]]) -> list[Any]:
@@ -89,14 +85,15 @@ async def check_camera(
         dict[str, Any]: A dictionary containing the camera 'id' and 'status' (or False if failed).
     """
 
-    def validate_response(bytes_: bytes) -> None:
+    def _validate_response(bytes_: bytes) -> None:
         if len(bytes_) < 1000:
             raise HTTPError(f"Response too small: {len(bytes_)} bytes")
 
     if source != "IT":
         url, ext = create_url(source, camera_id, camera_type)
     else:
-        url = camera_type  # Special case for Italy where urls are in the data directly
+        # Special case for Italy where urls are in the data directly
+        url = camera_type
         ext = CONSTANTS.ITALY.VIDEO_EXT
 
     async with rate_limiter:
@@ -106,7 +103,7 @@ async def check_camera(
                 response.raise_for_status()
                 response_bytes = await response.read()
                 status_code = response.status
-                validate_response(response_bytes)
+                _validate_response(response_bytes)
 
             if not download:
                 return {"id": camera_id, "status": status_code}

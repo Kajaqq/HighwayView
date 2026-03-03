@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import json
 import math
@@ -6,7 +5,6 @@ from itertools import cycle
 from pathlib import Path
 from typing import Any
 
-import aiofiles
 from lambert import Lambert93, convertToWGS84Deg
 
 from config import CONSTANTS
@@ -23,17 +21,6 @@ def check_parent_dir(path: Path) -> None:
         path (Path): The file path.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-
-
-async def check_parent_dir_async(path: Path) -> None:
-    """
-    Asynchronously ensures that the parent directory of a given path exists.
-
-    Args:
-        path (Path): The file path.
-    """
-    await asyncio.to_thread(path.parent.mkdir, parents=True, exist_ok=True)
-
 
 def check_json(json_data: Any, indent: int | None) -> str:
     """
@@ -56,7 +43,6 @@ def check_json(json_data: Any, indent: int | None) -> str:
     except (TypeError, ValueError) as e:
         raise ValueError(f"Data is not serializable to JSON: {e}") from e
 
-
 def save_json(json_data: Any, output: Path | str) -> None:
     """
     Synchronously saves JSON data to a file with proper error handling.
@@ -73,27 +59,6 @@ def save_json(json_data: Any, output: Path | str) -> None:
     try:
         content: str = check_json(json_data, indent=4)
         output_path.write_text(content, encoding="utf-8")
-    except OSError as e:
-        raise OSError(f"Failed to write file {output_path}: {e}") from e
-
-
-async def save_json_async(json_data: Any, output: Path | str) -> None:
-    """
-    Asynchronously saves JSON data to a file with proper error handling.
-
-    Args:
-        json_data (Any): The data to save.
-        output (Path | str): The output file path.
-
-    Raises:
-        OSError: If the file cannot be written.
-    """
-    output_path = Path(output)
-    await check_parent_dir_async(output_path)
-    try:
-        content: str = await asyncio.to_thread(check_json, json_data, indent=None)
-        async with aiofiles.open(output_path, "w", encoding="utf-8") as outfile:
-            await outfile.write(content)
     except OSError as e:
         raise OSError(f"Failed to write file {output_path}: {e}") from e
 

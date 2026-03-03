@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from tools.utils import haversine_km, save_json_async
+from tools.utils import haversine_km, save_json
 
 
 class BaseParser(ABC):
@@ -261,9 +261,9 @@ class BaseParser(ABC):
             parsed_data = self.parse(raw_data)
 
         if output_file:
-            await save_json_async(parsed_data, output_file)
+            save_json(parsed_data, output_file)
         elif output_folder:
             file_name = f"cameras_{self.country.lower()}{'_gov' if self.country in ['ES', 'UK'] else ''}.json"  # France(FR) and Italy(IT) handle saving independently
-            await save_json_async(parsed_data, Path(output_folder) / file_name)
+            save_json(parsed_data, Path(output_folder) / file_name)
 
         return parsed_data
