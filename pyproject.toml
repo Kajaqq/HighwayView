@@ -31,3 +31,8 @@ extend-select = [
     "TRY"
 ]
 ignore = ['TRY003']
+
+[dependency-groups]
+dev = [
+    "pdoc>=16.0.0",
+]

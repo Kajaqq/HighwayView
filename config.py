@@ -17,7 +17,7 @@ class CONSTANTS:
         DATA_DIR = PROJECT_ROOT / Path("data/")
         IMG_DIR_NAME = Path("images/")
         IMG_DIR = DATA_DIR / IMG_DIR_NAME
-        HTML_DIR = Path('html')
+        HTML_DIR = DATA_DIR / Path('html/')
         DEFAULT_HEADERS = {
             "accept": "*/*",
             "content-type": "application/json",
@@ -311,9 +311,6 @@ class CONSTANTS:
             ]
             EAST_WEST = ["A04", "A16"]  # A04 is the big East-West Artery
             RINGS = ["A56"]  # Naples Tangenziale
-
-    class POLAND:
-        pass
 
     class UK:
         EARTH_MAX_COORDS = "-180,-90,180,90"
