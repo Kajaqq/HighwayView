@@ -357,8 +357,8 @@ def generate_html(
 
                 slide.appendChild(mediaElement);
 
-                // Add info overlay for France
-                if (country === 'FR') {{
+                // Add info overlay 
+                if (country) {{
                     const info = document.createElement('div');
                     info.className = 'slide-info';
                     info.textContent = `Highway: ${{camera.highway}} - Camera ${{camera.number}}`;
