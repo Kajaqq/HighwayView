@@ -22,6 +22,7 @@ def check_parent_dir(path: Path) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
+
 def check_json(json_data: Any, indent: int | None) -> str:
     """
     Validates and formats JSON data to a string.
@@ -42,6 +43,7 @@ def check_json(json_data: Any, indent: int | None) -> str:
         return json.dumps(json_data, ensure_ascii=False, indent=indent)
     except (TypeError, ValueError) as e:
         raise ValueError(f"Data is not serializable to JSON: {e}") from e
+
 
 def save_json(json_data: Any, output: Path | str) -> None:
     """

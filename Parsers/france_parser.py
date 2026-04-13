@@ -49,7 +49,8 @@ class FranceParser(BaseParser):
         Returns:
             str: The normalized highway name (e.g., 'A-10', 'N-154') or 'Unknown'.
         """
-        def _normalize_rn(prefix_:str):
+
+        def _normalize_rn(prefix_: str):
             # France national highways 'Route Nationale' use RN or N interchangeably. We normalize it to more common 'N'
             return "N" if prefix == "RN" else prefix
 
@@ -68,7 +69,7 @@ class FranceParser(BaseParser):
             match = ROAD_REGEX.search(mapped_name)
             if match:
                 prefix = match.group(1).upper()
-                prefix =  _normalize_rn(prefix)
+                prefix = _normalize_rn(prefix)
                 return f"{prefix}-{match.group(2)}"
             return mapped_name
 
@@ -84,6 +85,7 @@ class FranceParser(BaseParser):
         Returns:
             list[dict[str, Any]]: A list of formatted highway camera dictionaries.
         """
+
         def _km_point_get(full_label_) -> float:
             km_pt = 0.0
             pr_match = PR_REGEX.search(full_label_)

@@ -95,7 +95,6 @@ def get_camera_urls(
     return cameras, country
 
 
-
 def generate_html(
     cameras: list[tuple[str, str, str, int, str]], interval: int, country: str
 ) -> str:

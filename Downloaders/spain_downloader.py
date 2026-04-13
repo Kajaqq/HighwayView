@@ -13,6 +13,7 @@ class SpainDownloader(BaseDownloader):
     """
     Downloader for Spanish government highway camera data (DGT).
     """
+
     @staticmethod
     def decode_data(camaras_data: str | bytes) -> str:
         """

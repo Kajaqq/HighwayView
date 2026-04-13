@@ -127,11 +127,13 @@ class BaseDownloader(ABC):
                 headers, timeout_ctx, connector = self._get_http_settings()
                 async with aiohttp.ClientSession(
                     headers=headers, timeout=timeout_ctx, connector=connector
-                ) as new_session: # Create a new session
+                ) as new_session:  # Create a new session
                     content = await self._async_request(new_session, method, url)
                     return str(content)  # enforce return type as str
             else:
-                content = await self._async_request(session, method, url) # Use existing session
+                content = await self._async_request(
+                    session, method, url
+                )  # Use existing session
                 return str(content)
         except aiohttp.ClientError as e:
             raise HTTPError(self._format_error_message(method, url, e)) from e

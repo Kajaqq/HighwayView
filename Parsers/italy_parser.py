@@ -209,7 +209,9 @@ class ItalyParser(BaseParser):
                 if cam_url.startswith("https://inviaggio.autobspd.it/"):
                     continue
 
-                if camera_data.get("VIS_WEB") == "S": #If camera is visible/online. Italy actually checks their cameras.
+                if (
+                    camera_data.get("VIS_WEB") == "S"
+                ):  # If camera is visible/online. Italy actually checks their cameras.
                     if cam_url == "---":
                         # Italy calls the camera id -> 'IP" for some reason
                         cam_url = base_ip_url.format(ip=camera_data.get("IP", ""))
@@ -309,7 +311,7 @@ class ItalyParser(BaseParser):
 
         a4_cameras: list[dict[str, Any]] = []
 
-       # As Italy has various concessionaries for the main road, we need to handle the government + 3 other sections.
+        # As Italy has various concessionaries for the main road, we need to handle the government + 3 other sections.
         a4_cameras.extend(self.parse_a4_abp(raw_data.get("a4_abp", "")))
         a4_cameras.extend(self.parse_a4_cav(raw_data.get("a4_cav", "")))
         a4_cameras.extend(self.parse_a4_satap(raw_data.get("a4_satap", "")))
