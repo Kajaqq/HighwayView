@@ -29,9 +29,8 @@ def get_video_frame(video_file: Path) -> None:
     output_path = video_file.with_suffix(".png")
     input_file = ffmpeg.input(str(video_file), ss="00:00:00")
     # scale all images to the same size
-    scaled = input_file.scale(w=352, h=288)
     # save the first frame as a PNG
-    ffmpeg.output(scaled, filename=str(output_path), vframes=1).run(
+    ffmpeg.output(input_file, filename=str(output_path), vframes=1, vf='scale=352:288').run(
         overwrite_output=True, quiet=True
     )
     # remove the video
