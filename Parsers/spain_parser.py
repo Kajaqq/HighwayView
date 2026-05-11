@@ -10,17 +10,11 @@ from Parsers.base_parser import BaseParser
 
 class SpainParser(BaseParser):
     """
-    Parser for Spanish highway cameras (DGT).
+    Parser for Spanish highway cameras (Source: DGT).
     """
 
     @property
     def country(self) -> str:
-        """
-        Property that returns the country code.
-
-        Returns:
-            str: The two-letter country code ('ES').
-        """
         return "ES"
 
     async def parse(self, raw_data: str | bytes) -> list[dict[str, Any]] | None:

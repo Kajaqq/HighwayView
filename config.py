@@ -212,7 +212,7 @@ class CONSTANTS:
             ("A-62", 6),
             ("A-6", 5),
         ]
-        XOR_KEY = "K"
+        XOR_KEY = "f"
         IMAGE_EXT = ".jpg"
         RATE_LIMIT = 150
 

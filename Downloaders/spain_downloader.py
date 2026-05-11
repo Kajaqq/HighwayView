@@ -1,5 +1,6 @@
 import winloop
 from base64 import b64decode
+from pathlib import Path
 
 from config import CONSTANTS
 from tools.utils import xor_decode
@@ -50,7 +51,12 @@ class SpainDownloader(BaseDownloader):
         decoded_data: str = self.decode_data(raw_data)
         return decoded_data
 
+    async def save_data(self, file_dir: Path = Path("data/cameras_spain_raw.json")):
+        data = await self.get_data()
+        with Path.open(file_dir, "w", encoding="utf-8") as f:
+            f.write(data)
+            print(f"Data saved to {file_dir}")
 
 if __name__ == "__main__":
     downloader = SpainDownloader()
-    winloop.run(downloader.get_data())
+    winloop.run(downloader.save_data())
