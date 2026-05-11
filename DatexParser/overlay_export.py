@@ -4,14 +4,18 @@ import asyncio
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
-from Downloaders.base_downloader import GenericDownloader
 from config import CONSTANTS
 
 from .datex_filter import FilterConfig, HeuristicFilter, SEVERITY_RANK
 from .datex_models import TruckDashboardAlert
-from .datex_parser import DatexParser
+
+
+class AlertParser(Protocol):
+    @property
+    def alerts(self) -> list[TruckDashboardAlert]: ...
+    async def get_parsed_data(self, **kwargs: Any) -> list[TruckDashboardAlert]: ...
 
 
 def _is_road_closed(alert: TruckDashboardAlert) -> bool:
@@ -31,7 +35,13 @@ def _is_overlay_relevant(alert: TruckDashboardAlert) -> bool:
 def _serialize_location(alert: TruckDashboardAlert, field_name: str) -> dict[str, Any]:
     location = getattr(alert, field_name)
     return {
+        "latitude": location.latitude if location else None,
+        "longitude": location.longitude if location else None,
         "km_point": location.km_point if location else None,
+        "reference_marker": location.reference_marker if location else None,
+        "offset_m": location.offset_m if location else None,
+        "alertc_location_id": location.alertc_location_id if location else None,
+        "alertc_location_name": location.alertc_location_name if location else None,
         "community": location.community if location else None,
         "province": location.province if location else None,
         "municipality": location.municipality if location else None,
@@ -58,15 +68,18 @@ def _serialize_alert(alert: TruckDashboardAlert, confidence: str) -> dict[str, A
         "end_time": alert.end_time.isoformat() if alert.end_time else None,
         "location_from": _serialize_location(alert, "location_from"),
         "location_to": _serialize_location(alert, "location_to"),
+        "public_comments": alert.public_comments,
+        "safety_related_message": alert.safety_related_message,
     }
 
 
 async def build_overlay_payload(
+    parser: AlertParser,
     roads: list[str] | None = None,
     max_items: int = 50,
     filter_config: FilterConfig | None = None,
+    skip_filter: bool = False,
 ) -> dict[str, Any]:
-    parser = DatexParser(downloader=GenericDownloader())
     await parser.get_parsed_data()
 
     alerts = parser.alerts
@@ -74,14 +87,16 @@ async def build_overlay_payload(
         road_set = set(roads)
         alerts = [a for a in alerts if a.road_name in road_set]
 
-    alerts = [alert for alert in alerts if _is_overlay_relevant(alert)]
+    if skip_filter:
+        merged = [_serialize_alert(a, "unfiltered") for a in alerts]
+    else:
+        alerts = [alert for alert in alerts if _is_overlay_relevant(alert)]
+        heuristic = HeuristicFilter(config=filter_config)
+        result = heuristic.filter(alerts)
+        active = [_serialize_alert(a, "verified_active") for a in result.active]
+        suspicious = [_serialize_alert(a, "suspicious") for a in result.suspicious]
+        merged = active + suspicious
 
-    heuristic = HeuristicFilter(config=filter_config)
-    result = heuristic.filter(alerts)
-
-    active = [_serialize_alert(a, "verified_active") for a in result.active]
-    suspicious = [_serialize_alert(a, "suspicious") for a in result.suspicious]
-    merged = active + suspicious
     merged.sort(
         key=lambda item: (
             SEVERITY_RANK.get((item.get("severity") or "").lower(), 0),
@@ -100,7 +115,7 @@ async def build_overlay_payload(
         "generated_at": datetime.now(UTC).isoformat(),
         "total": len(merged),
         "roads_filter": roads or [],
-        "severity_rule": "medium_or_higher_plus_road_closed",
+        "severity_rule": "none (debug)" if skip_filter else "medium_or_higher_plus_road_closed",
         "alerts": merged,
     }
 
@@ -113,25 +128,31 @@ def write_overlay_payload(payload: dict[str, Any], output_file: Path) -> None:
 
 
 async def export_overlay_data(
+    parser: AlertParser,
     output_file: Path | None = None,
     roads: list[str] | None = None,
     max_items: int = 50,
     filter_config: FilterConfig | None = None,
+    skip_filter: bool = False,
 ) -> Path:
     target = output_file or (CONSTANTS.COMMON.DATA_DIR / "overlay_data.json")
     payload = await build_overlay_payload(
-        roads=roads, max_items=max_items, filter_config=filter_config
+        roads=roads, max_items=max_items, filter_config=filter_config, parser=parser,
+        skip_filter=skip_filter,
     )
     write_overlay_payload(payload, target)
     return target
 
 
 async def run_overlay_export_loop(
-    interval_seconds: int = 300,
+    parser: AlertParser,
+    country_code : str,
+    interval_seconds : int = 300,
     output_file: Path | None = None,
     roads: list[str] | None = None,
     max_items: int = 50,
     filter_config: FilterConfig | None = None,
+    skip_filter: bool = False,
 ) -> None:
     while True:
         target = await export_overlay_data(
@@ -139,6 +160,8 @@ async def run_overlay_export_loop(
             roads=roads,
             max_items=max_items,
             filter_config=filter_config,
+            parser=parser,
+            skip_filter=skip_filter,
         )
-        print(f"Overlay data updated: {target}")
+        print(f"[{country_code}] Overlay data updated: {target}")
         await asyncio.sleep(interval_seconds)

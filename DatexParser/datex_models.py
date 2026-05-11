@@ -7,7 +7,7 @@ for coordinate / admin-data pairs.
 
 from enum import StrEnum
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 
 class AlertConfidence(StrEnum):
@@ -31,6 +31,12 @@ class LocationPoint(BaseModel):
         latitude: WGS-84 latitude.
         longitude: WGS-84 longitude.
         km_point: Kilometer-point marker on the road, if available.
+        reference_marker: French PR marker identifier, if available.
+        offset_m: Offset in meters from the French PR marker or Alert-C
+            reference, if available.
+        alertc_location_id: Alert-C/TMC location identifier, if available.
+        alertc_location_name: Human-readable Alert-C location name, if
+            available.
         community: Spanish Autonomous Community (e.g. ``Andalucía``).
         province: Province name (e.g. ``Sevilla``).
         municipality: Municipality name.
@@ -41,6 +47,10 @@ class LocationPoint(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     km_point: float | None = None
+    reference_marker: str | None = None
+    offset_m: float | None = None
+    alertc_location_id: str | None = None
+    alertc_location_name: str | None = None
     community: str | None = None
     province: str | None = None
     municipality: str | None = None
@@ -87,6 +97,10 @@ class TruckDashboardAlert(BaseModel):
         lane_usage: Lane restriction info (e.g. ``rightLane``).
         location_from: Start point of the affected segment.
         location_to: End point of the affected segment.
+        public_comments: Human-readable DATEX public comments, when
+            available.
+        safety_related_message: French DATEX II v2 safety-related flag, when
+            available.
     """
 
     model_config = ConfigDict(strict=False)
@@ -120,3 +134,5 @@ class TruckDashboardAlert(BaseModel):
     # --- Location / precise ---
     location_from: LocationPoint | None = None
     location_to: LocationPoint | None = None
+    public_comments: list[str] = Field(default_factory=list)
+    safety_related_message: bool | None = None

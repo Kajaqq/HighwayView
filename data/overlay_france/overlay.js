@@ -1,4 +1,4 @@
-const DATA_URL = "../overlay_data.json";
+const DATA_URL = "overlay_data.json";
 const FETCH_INTERVAL_MS = 10_000;
 const SCROLL_INTERVAL_MS = 15_000;
 const MAX_VISIBLE_ALERTS = 3;
@@ -9,84 +9,119 @@ const SCROLL_ANIMATION_MS = 650;
 
 const MANAGEMENT_LABELS = {
   roadClosed: "Road Closed",
-  laneClosures: "Lane Closed",
+  laneClosures: "Lane Closures",
   narrowLanes: "Narrow Lanes",
   singleAlternateLineTraffic: "Alternating Traffic",
-  newRoadworksLayout: "Modified Layout",
+  contraflow: "Contraflow",
+  closedPermanentlyForTheWinter: "Closed for Winter",
+  weightRestrictionInOperation: "Weight Restriction",
 };
 
 const CAUSE_LABELS = {
   accident: "Accident",
-  vehicleObstruction: "Disabled Vehicle",
-  obstruction: "Obstruction on Road",
-  environmentalObstruction: "Environmental Hazard",
-  infrastructureDamageObstruction: "Damaged Infrastructure",
-  roadMaintenance: "Roadworks",
-  abnormalTraffic: "Heavy Traffic",
-  roadOrCarriagewayOrLaneManagement: "Traffic Management Active",
-  poorEnvironment: "Poor Weather",
+  obstruction: "Obstruction",
+  roadManagement: "Road Management",
+  MaintenanceWorks: "Maintenance",
+  ConstructionWorks: "Construction Works",
+  InfrastructureDamageObstruction: "Infrastructure Damage",
+  AnimalPresenceObstruction: "Animal on Road",
+  GeneralObstruction: "Obstruction",
+  roadsideServiceDisruption: "Service Disruption",
+  ReroutingManagement: "Rerouting",
+  GeneralNetworkManagement: "Network Management",
+  GeneralInstructionOrMessageToRoadUsers: "Road User Information",
+  OperatorAction: "Operator Action",
+  PublicEvent: "Public Event",
+  SpeedManagement: "Speed Management",
 };
 
 const ALERT_TRANSLATIONS = {
-  // Pure Causes (No specific management active)
-  None_accident_None: "Accident",
-  None_vehicleObstruction_None: "Disabled Vehicle",
-  None_obstruction_None: "Obstruction on Road",
-  None_environmentalObstruction_None: "Environmental Hazard",
-  None_infrastructureDamageObstruction_None: "Damaged Infrastructure",
-  None_roadMaintenance_roadworks: "Roadworks",
-  None_abnormalTraffic_None: "Heavy Traffic",
-  None_roadOrCarriagewayOrLaneManagement_None: "Traffic Management Active",
+  // Road Management Actions
+  roadClosed_roadManagement_roadClosed: "Road Closed",
+  laneClosures_roadManagement_laneClosures: "Lane Closures",
+  narrowLanes_roadManagement_narrowLanes: "Narrow Lanes",
+  singleAlternateLineTraffic_roadManagement_singleAlternateLineTraffic: "Alternating Traffic",
+  contraflow_roadManagement_contraflow: "Contraflow Active",
+  closedPermanentlyForTheWinter_roadManagement_closedPermanentlyForTheWinter: "Closed for Winter",
+  weightRestrictionInOperation_roadManagement_weightRestrictionInOperation: "Weight Restriction Active",
 
-  // Road / Carriageway Closures
-  roadClosed_roadMaintenance_roadworks: "Road Closed (Roadworks)",
-  roadClosed_environmentalObstruction_None: "Road Closed (Hazard)",
-  roadClosed_poorEnvironment_None: "Road Closed (Poor Weather)",
-  roadClosed_infrastructureDamageObstruction_None: "Road Closed (Damaged Road)",
-  roadClosed_roadOrCarriagewayOrLaneManagement_None: "Road Closed",
-  carriagewayClosures_roadMaintenance_roadworks: "Direction Closed (Roadworks)",
-  carriagewayClosures_environmentalObstruction_None: "Direction Closed (Hazard)",
-  carriagewayClosures_infrastructureDamageObstruction_None: "Direction Closed (Damaged Road)",
+  // Accidents & Obstructions
+  None_accident_accident: "Accident",
+  None_obstruction_brokenDownVehicle: "Broken Down Vehicle",
+  None_GeneralObstruction_GeneralObstruction: "Obstruction on Road",
+  None_InfrastructureDamageObstruction_InfrastructureDamageObstruction: "Infrastructure Damage",
+  None_AnimalPresenceObstruction_AnimalPresenceObstruction: "Animal on Road",
 
-  // Lane Closures
-  laneClosures_accident_None: "Lane Closed (Accident)",
-  laneClosures_vehicleObstruction_None: "Lane Closed (Disabled Vehicle)",
-  laneClosures_roadMaintenance_roadworks: "Lane Closed (Roadworks)",
-  laneClosures_obstruction_None: "Lane Closed (Obstruction)",
-  laneClosures_environmentalObstruction_None: "Lane Closed (Hazard)",
-  laneClosures_infrastructureDamageObstruction_None: "Lane Closed (Damaged Road)",
-  laneClosures_roadOrCarriagewayOrLaneManagement_None: "Lane Closed",
+  // Maintenance Works
+  None_MaintenanceWorks_roadworks: "Roadworks",
+  None_MaintenanceWorks_resurfacingWork: "Resurfacing",
+  None_MaintenanceWorks_repairWork: "Repair",
+  None_MaintenanceWorks_maintenanceWork: "Maintenance",
+  None_MaintenanceWorks_roadsideWork: "Roadside Work",
+  None_MaintenanceWorks_grassCuttingWork: "Grass Cutting",
+  None_MaintenanceWorks_roadMarkingWork: "Road Marking",
 
-  // Intermittent / Alternating Traffic
-  intermittentShortTermClosures_roadMaintenance_roadworks: "Intermittent Closures (Roadworks)",
-  intermittentShortTermClosures_environmentalObstruction_None: "Intermittent Closures (Hazard)",
-  singleAlternateLineTraffic_roadMaintenance_roadworks: "Alternating Traffic (Roadworks)",
-  singleAlternateLineTraffic_environmentalObstruction_None: "Alternating Traffic (Hazard)",
+  // Construction
+  None_ConstructionWorks_ConstructionWorks: "Construction",
 
-  // Narrowing & Deviations
-  narrowLanes_accident_None: "Narrow Lanes (Accident)",
-  narrowLanes_vehicleObstruction_None: "Narrow Lanes (Disabled Vehicle)",
-  narrowLanes_roadMaintenance_roadworks: "Narrow Lanes (Roadworks)",
-  narrowLanes_environmentalObstruction_None: "Narrow Lanes (Hazard)",
-  lanesDeviated_roadMaintenance_roadworks: "Lanes Deviated (Roadworks)",
-  lanesDeviated_infrastructureDamageObstruction_None: "Lanes Deviated (Damaged Road)",
-  lanesDeviated_environmentalObstruction_None: "Lanes Deviated (Hazard)",
-  newRoadworksLayout_roadMaintenance_roadworks: "Modified Layout (Roadworks)",
+  // Service Disruptions
+  None_roadsideServiceDisruption_petrolShortage: "Fuel Shortage",
+  None_roadsideServiceDisruption_serviceAreaClosed: "Service Area Closed",
 
-  // Specific Usage Restrictions
-  useOfSpecifiedLanesOrCarriagewaysAllowed_roadMaintenance_roadworks:
-    "Restricted Lane Usage (Roadworks)",
-  useOfSpecifiedLanesOrCarriagewaysAllowed_environmentalObstruction_None:
-    "Restricted Lane Usage (Hazard)",
-  useOfSpecifiedLanesOrCarriagewaysAllowed_roadOrCarriagewayOrLaneManagement_None:
-    "Restricted Lane Usage",
-  doNotUseSpecifiedLanesOrCarriageways_roadMaintenance_roadworks: "Lane Blocked (Roadworks)",
-  doNotUseSpecifiedLanesOrCarriageways_environmentalObstruction_None: "Lane Blocked (Hazard)",
-  doNotUseSpecifiedLanesOrCarriageways_roadOrCarriagewayOrLaneManagement_None: "Lane Blocked",
+  // Network & Traffic Management
+  None_ReroutingManagement_ReroutingManagement: "Rerouting Active",
+  None_GeneralNetworkManagement_GeneralNetworkManagement: "Network Management",
+  None_GeneralInstructionOrMessageToRoadUsers_GeneralInstructionOrMessageToRoadUsers: "Road User Information",
+  None_OperatorAction_OperatorAction: "Operator Action",
+  None_SpeedManagement_SpeedManagement: "Speed Restriction",
 
-  // Freight / Weights
-  weightRestrictionInOperation_roadOrCarriagewayOrLaneManagement_None: "Weight Restriction Active",
+  // Events
+  None_PublicEvent_PublicEvent: "Public Event",
 };
+
+const SEVERITY_ORDER = { highest: 4, high: 3, medium: 2, low: 1 };
+
+function mergeAlertsBySituation(alerts) {
+  const groups = new Map();
+  for (const alert of alerts) {
+    const key = alert.situation_id;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(alert);
+  }
+
+  const merged = [];
+  for (const [, records] of groups) {
+    if (records.length === 1) {
+      merged.push(records[0]);
+      continue;
+    }
+
+    const mgmtRecord = records.find((r) => r.management_type);
+    const causeRecord = records.find(
+      (r) => !r.management_type && r.cause_type && r.cause_type !== "roadManagement",
+    );
+    const base = { ...(mgmtRecord || records[0]) };
+
+    if (causeRecord && causeRecord !== mgmtRecord) {
+      base.cause_type = causeRecord.cause_type;
+      base.detailed_cause_type = causeRecord.detailed_cause_type;
+    }
+
+    for (const r of records) {
+      const rSev = SEVERITY_ORDER[(r.severity || "").toLowerCase()] || 0;
+      const bSev = SEVERITY_ORDER[(base.severity || "").toLowerCase()] || 0;
+      if (rSev > bSev) base.severity = r.severity;
+    }
+
+    if (!base.end_time) {
+      const ends = records.map((r) => r.end_time).filter(Boolean);
+      if (ends.length) base.end_time = ends.sort().at(-1);
+    }
+
+    merged.push(base);
+  }
+  return merged;
+}
 
 const alertsListEl = document.getElementById("alerts-list");
 const statusLineEl = document.getElementById("status-line");
@@ -120,13 +155,30 @@ function formatKm(km) {
   return Number(km).toFixed(1).replace(/\.0$/, "");
 }
 
+function hasLocationInfo(alert) {
+  const hasKm = alert.location_from?.km_point != null || alert.location_to?.km_point != null;
+  const hasAlertc = !!alert.location_from?.alertc_location_name || !!alert.location_to?.alertc_location_name;
+  return hasKm || hasAlertc;
+}
+
 function formatLocation(alert) {
   const fromKm = formatKm(alert.location_from?.km_point);
   const toKm = formatKm(alert.location_to?.km_point);
+  const fromAlertc = alert.location_from?.alertc_location_name || null;
+  const toAlertc = alert.location_to?.alertc_location_name || null;
 
-  if (fromKm && toKm) return `between km ${fromKm} - ${toKm}`;
-  if (fromKm) return `at km ${fromKm}`;
-  if (toKm) return `at km ${toKm}`;
+  if (fromKm && toKm) {
+    const names = [...new Set([fromAlertc, toAlertc].filter(Boolean))];
+    const near = names.length ? ` (${names.join("/")})` : "";
+    return `between km ${fromKm} - ${toKm}${near}`;
+  }
+
+  const km = fromKm || toKm;
+  const alertc = fromAlertc || toAlertc;
+
+  if (km && alertc) return `at km ${km} (${alertc})`;
+  if (km) return `at km ${km}`;
+  if (alertc) return `near ${alertc}`;
   return "";
 }
 
@@ -177,6 +229,14 @@ function render(alerts) {
     const mainEl = document.createElement("div");
     mainEl.className = "alert-main";
     mainEl.textContent = main;
+
+    if (alert._record_count > 1) {
+      const badge = document.createElement("span");
+      badge.className = "record-count";
+      badge.textContent = alert._record_count;
+      mainEl.appendChild(badge);
+    }
+
     item.appendChild(mainEl);
 
     const subEl = document.createElement("div");
@@ -232,7 +292,8 @@ async function loadAlerts() {
     const response = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    const incomingAlerts = Array.isArray(payload.alerts) ? payload.alerts : [];
+    const rawAlerts = Array.isArray(payload.alerts) ? payload.alerts : [];
+    const incomingAlerts = mergeAlertsBySituation(rawAlerts).filter(hasLocationInfo);
     const signature = incomingAlerts
       .map((a) => `${a.record_id || ""}:${a.version_time || a.creation_time || a.start_time || ""}`)
       .join("|");

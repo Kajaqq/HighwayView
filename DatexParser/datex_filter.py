@@ -34,28 +34,28 @@ logger = logging.getLogger(__name__)
 TRANSIENT_CAUSES: frozenset[str] = frozenset(
     {
         "accident",
-        "vehicleObstruction",
-        "animalPresence",
-        "poorWeatherConditions",
-        "poorEnvironmentConditions",
-        "abnormalTraffic",
+        "vehicleobstruction",
+        "animalpresence",
+        "poorweatherconditions",
+        "poorenvironmentconditions",
+        "abnormaltraffic",
     }
 )
 
 #: Major infrastructure issues that persist for years.
 INFRASTRUCTURE_CAUSES: frozenset[str] = frozenset(
     {
-        "infrastructureDamageObstruction",
+        "infrastructuredamageobstruction",
     }
 )
 
 #: Management types considered non-blocking for the severity override.
 NON_BLOCKING_MANAGEMENT: frozenset[str] = frozenset(
     {
-        "narrowLanes",
-        "singleAlternateLineTraffic",
-        "newRoadworksLayout",
-        "doNotUseSpecifiedLanesOrCarriageways",
+        "narrowlanes",
+        "singlealternatelinetraffic",
+        "newroadworkslayout",
+        "donotusespecifiedlanesorcarriageways",
     }
 )
 
