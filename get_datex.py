@@ -30,13 +30,26 @@ COUNTRY_CONFIGS: dict[str, dict] = {
         "output_dir": CONSTANTS.FRANCE.DATEX_OVERLAY_DIR,
         "filter_config": FilterConfig(
             transient_ttl_days=2,
-            roadworks_ttl_days=180,
+            roadworks_ttl_days=1800,
             infrastructure_ttl_days=1095,
             low_severity_ttl_days=2,
             highest_road_closed_bonus=365,
             suspicious_threshold=0.75,
         ),
         "parser_kwargs": {"datex_url": CONSTANTS.FRANCE.DATEX_URL},
+    },
+    "IT": {
+        "roads": CONSTANTS.ITALY.DATEX_ROADS,
+        "output_dir": CONSTANTS.ITALY.DATEX_OVERLAY_DIR,
+        "filter_config": FilterConfig(
+            transient_ttl_days=2,
+            roadworks_ttl_days=3650,
+            infrastructure_ttl_days=1095,
+            low_severity_ttl_days=7,
+            highest_road_closed_bonus=365,
+            suspicious_threshold=0.75,
+        ),
+        "parser_kwargs": {},
     },
 }
 

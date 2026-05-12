@@ -269,7 +269,42 @@ class CONSTANTS:
         BASE_URL = "https://viabilita.autostrade.it/json/webcams.json"
         CAMERA_URL = "https://video.autostrade.it/video-mp4_hq/"
         VIDEO_EXT = ".mp4"
+        DATEX_OVERLAY_DIR = "overlay_italy"
+        DATEX_ROADS = [
+            "A1",
+            "A4",
+            "A5",
+            "A7",
+            "A8",
+            "A9",
+            "A10",
+            "A12",
+            "A13",
+            "A14",
+            "A22",
+            "A23",
+            "A24",
+            "A26",
+            "A30",
+            "A56",
+            "GRA",
+        ]
         RATE_LIMIT = 25
+        ROME_TZ = ZoneInfo("Europe/Rome")
+        CCISS_URL = "https://www.cciss.it/web/cciss/situazione-della-viabilita"
+        CCISS_PARAMS: dict[str, str] = {
+            "p_p_id": "2_WAR_ccissservizimapsportlet",
+            "p_p_lifecycle": "2",
+            "p_p_state": "normal",
+            "p_p_mode": "view",
+            "p_p_cacheability": "cacheLevelPage",
+            "p_p_col_id": "column-2",
+            "p_p_col_pos": "3",
+            "p_p_col_count": "4",
+            "_2_WAR_ccissservizimapsportlet_so": "36.474306755095235,4.636230468750001",
+            "_2_WAR_ccissservizimapsportlet_ne": "47.79839667295524,21.7529296875",
+            "_2_WAR_ccissservizimapsportlet_z": "9",
+        }
         HIGHWAY_SEQUENCE = [
             # --- BORDERS ---
             # France (Coast)
