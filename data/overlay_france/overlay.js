@@ -1,4 +1,4 @@
-const DATA_URL = "overlay_data.json";
+const DATA_URL = "./overlay_data.json";
 const FETCH_INTERVAL_MS = 10_000;
 const SCROLL_INTERVAL_MS = 15_000;
 const MAX_VISIBLE_ALERTS = 3;
@@ -290,7 +290,10 @@ function setScrollTimer() {
 async function loadAlerts() {
   try {
     const response = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      statusLineEl.textContent = `Overlay data unavailable (HTTP ${response.status})`;
+      return;
+    }
     const payload = await response.json();
     const rawAlerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     const incomingAlerts = mergeAlertsBySituation(rawAlerts).filter(hasLocationInfo);
@@ -312,5 +315,5 @@ async function loadAlerts() {
   }
 }
 
-loadAlerts();
+loadAlerts().catch(console.error);
 setInterval(loadAlerts, FETCH_INTERVAL_MS);
