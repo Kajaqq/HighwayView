@@ -174,6 +174,7 @@ class HeuristicFilter:
         self,
         alerts: list[TruckDashboardAlert],
         min_severity: str | None = None,
+        now: datetime | None = None,
     ) -> FilterResult:
         """Run the heuristic engine over a list of parsed alerts.
 
@@ -183,11 +184,13 @@ class HeuristicFilter:
                 Only alerts at or above this level are processed
                 (one of ``"low"``, ``"medium"``, ``"high"``, ``"highest"``).
                 Alerts with ``None`` severity are kept regardless.
+            now: Reference time for age calculations.  Defaults to
+                ``datetime.now(UTC)`` when ``None``.
 
         Returns:
             A :class:`FilterResult` with categorized alerts.
         """
-        now = datetime.now(UTC)
+        now = now or datetime.now(UTC)
         result = FilterResult()
 
         if min_severity:

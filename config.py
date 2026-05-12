@@ -44,8 +44,23 @@ class CONSTANTS:
         VIDEO_EXT = ".mp4"
         IMAGE_EXT = ".png"
         PARIS_TZ = ZoneInfo("Europe/Paris")
-        DATEX_OVERLAY_DIR = 'overlay_france'
-        DATEX_ROADS = ['A7', 'A16', 'A13', 'A2', 'A20', 'A75', 'N10', 'N79', 'N70', 'N104', 'A86', 'N230', 'A620', 'N844']
+        DATEX_OVERLAY_DIR = "overlay_france"
+        DATEX_ROADS = [
+            "A7",
+            "A16",
+            "A13",
+            "A2",
+            "A20",
+            "A75",
+            "N10",
+            "N79",
+            "N70",
+            "N104",
+            "A86",
+            "N230",
+            "A620",
+            "N844",
+        ]
         HIGHWAY_SEQUENCE = [
             # Northern Gateways - UK & Belgium (0:00 - 1:30)
             ("A-16", 8),  # Calais Port/Tunnel & Amiens (Max usage of available 11)
@@ -191,8 +206,24 @@ class CONSTANTS:
         CAMERA_URL = "https://infocar.dgt.es/etraffic/data/camaras/"
         CAMERA_API = BASE_URL + "etrafficWEB/api/cache/getCamaras"
         DATEX_OVERLAY_DIR = "overlay_spain"
-        DATEX_ROADS = ['AP-7', 'A-7', 'A-8', 'A-62', 'A-1', 'A-2', 'A-3', 'A-4', 'A-5', 'A-6', 'M-50', 'SE-30', 'AP-6']
-        DATEX_URL = "https://nap.dgt.es/datex2/v3/dgt/SituationPublication/datex2_v36.xml"
+        DATEX_ROADS = [
+            "AP-7",
+            "A-7",
+            "A-8",
+            "A-62",
+            "A-1",
+            "A-2",
+            "A-3",
+            "A-4",
+            "A-5",
+            "A-6",
+            "M-50",
+            "SE-30",
+            "AP-6",
+        ]
+        DATEX_URL = (
+            "https://nap.dgt.es/datex2/v3/dgt/SituationPublication/datex2_v36.xml"
+        )
         HIGHWAY_SEQUENCE = [
             # Northern Gateways (0:00 - 1:30)
             ("A-1", 8),

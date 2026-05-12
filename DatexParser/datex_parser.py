@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 from lxml import etree
@@ -121,10 +122,10 @@ class DatexParser(BaseParser):
 
         if self._is_datex_v2(nsmap):
             alerts = self._parse_french_v2(root, nsmap)
-            country = 'FR'
+            country = "FR"
         else:
             alerts = self._parse_spanish_v3(root, nsmap)
-            country = 'ES'
+            country = "ES"
 
         self._alerts = alerts
         print(f"[{country}] Parsed {len(alerts)} DATEX II alerts.")
@@ -144,7 +145,9 @@ class DatexParser(BaseParser):
             overall_severity = self._text(situation, "sit:overallSeverity", nsmap)
 
             for record in situation.findall("sit:situationRecord", nsmap):
-                alert = self._parse_record(record, situation_id, overall_severity, nsmap)
+                alert = self._parse_record(
+                    record, situation_id, overall_severity, nsmap
+                )
                 if self.truck_only and self._is_non_truck_only(alert):
                     continue
                 alerts.append(alert)
@@ -166,6 +169,8 @@ class DatexParser(BaseParser):
         Returns:
             The list of parsed alerts.
         """
+        if self.downloader is None:
+            raise RuntimeError("DatexParser requires a downloader to call get_parsed_data()")
         raw_data = await self.downloader.download(self.datex_url)
         alerts = await self.parse(raw_data)
 
@@ -354,6 +359,12 @@ class DatexParser(BaseParser):
         return node.text if node is not None else None
 
     @staticmethod
+    def _parse_datetime(value: str | None) -> datetime | None:
+        if value is None:
+            return None
+        return datetime.fromisoformat(value)
+
+    @staticmethod
     def _float_or_none(value: str | None) -> float | None:
         """Convert a string to ``float`` when possible."""
         if value is None:
@@ -472,19 +483,19 @@ class DatexParser(BaseParser):
         return TruckDashboardAlert(
             situation_id=situation_id,
             record_id=record_id,
-            creation_time=self._text(record, "d2:situationRecordCreationTime", nsmap),
-            version_time=self._text(record, "d2:situationRecordVersionTime", nsmap),
+            creation_time=self._parse_datetime(self._text(record, "d2:situationRecordCreationTime", nsmap)),
+            version_time=self._parse_datetime(self._text(record, "d2:situationRecordVersionTime", nsmap)),
             severity=self._text(record, "d2:severity", nsmap) or overall_severity,
-            start_time=self._text(
+            start_time=self._parse_datetime(self._text(
                 record,
                 "d2:validity/d2:validityTimeSpecification/d2:overallStartTime",
                 nsmap,
-            ),
-            end_time=self._text(
+            )),
+            end_time=self._parse_datetime(self._text(
                 record,
                 "d2:validity/d2:validityTimeSpecification/d2:overallEndTime",
                 nsmap,
-            ),
+            )),
             management_type=management_type,
             vehicle_type=self._text(
                 record,
@@ -705,7 +716,9 @@ class DatexParser(BaseParser):
             return location
 
         location = location or LocationPoint()
-        location_id = self._text(alertc_el, "d2:alertCLocation/d2:specificLocation", nsmap)
+        location_id = self._text(
+            alertc_el, "d2:alertCLocation/d2:specificLocation", nsmap
+        )
         location_name = self._text(
             alertc_el,
             "d2:alertCLocation/d2:alertCLocationName/d2:values/d2:value",
@@ -718,7 +731,9 @@ class DatexParser(BaseParser):
             update={
                 "alertc_location_id": location_id or location.alertc_location_id,
                 "alertc_location_name": location_name or location.alertc_location_name,
-                "offset_m": location.offset_m if location.offset_m is not None else offset_m,
+                "offset_m": location.offset_m
+                if location.offset_m is not None
+                else offset_m,
             }
         )
 
@@ -729,7 +744,10 @@ class DatexParser(BaseParser):
     ) -> str | None:
         """Extract the best French road designation."""
         for name_el in record.findall(".//d2:name", nsmap):
-            if self._text(name_el, "d2:tpegOtherPointDescriptorType", nsmap) != "linkName":
+            if (
+                self._text(name_el, "d2:tpegOtherPointDescriptorType", nsmap)
+                != "linkName"
+            ):
                 continue
             road_name = self._text(name_el, "d2:descriptor/d2:values/d2:value", nsmap)
             if road_name:
@@ -801,18 +819,18 @@ class DatexParser(BaseParser):
         severity = self._text(record, "sit:severity", nsmap) or overall_severity
 
         # --- Timestamps ---
-        creation_time = self._text(record, "sit:situationRecordCreationTime", nsmap)
-        version_time = self._text(record, "sit:situationRecordVersionTime", nsmap)
-        start_time = self._text(
+        creation_time = self._parse_datetime(self._text(record, "sit:situationRecordCreationTime", nsmap))
+        version_time = self._parse_datetime(self._text(record, "sit:situationRecordVersionTime", nsmap))
+        start_time = self._parse_datetime(self._text(
             record,
             "sit:validity/com:validityTimeSpecification/com:overallStartTime",
             nsmap,
-        )
-        end_time = self._text(
+        ))
+        end_time = self._parse_datetime(self._text(
             record,
             "sit:validity/com:validityTimeSpecification/com:overallEndTime",
             nsmap,
-        )
+        ))
 
         # --- Cause ---
         cause_type = self._text(record, "sit:cause/sit:causeType", nsmap)

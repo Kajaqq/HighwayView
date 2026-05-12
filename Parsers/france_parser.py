@@ -52,7 +52,7 @@ class FranceParser(BaseParser):
 
         def _normalize_rn(prefix_: str):
             # France national highways 'Route Nationale' use RN or N interchangeably. We normalize it to more common 'N'
-            return "N" if prefix == "RN" else prefix
+            return "N" if prefix == "RN" else prefix_
 
         if text:
             # Try to get the first apperance of a highway name pattern

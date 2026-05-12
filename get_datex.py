@@ -7,7 +7,7 @@ import winloop
 from DatexParser.cciss_parser import CcissParser
 from DatexParser.datex_filter import FilterConfig
 from DatexParser.datex_parser import DatexParser
-from DatexParser.overlay_export import AlertParser, export_overlay_data, run_overlay_export_loop
+from DatexParser.overlay_export import export_overlay_data, run_overlay_export_loop
 from Downloaders.base_downloader import GenericDownloader
 from config import CONSTANTS
 
@@ -85,7 +85,7 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def _build_parser(country: str) -> AlertParser:
+def _build_parser(country: str) -> CcissParser | DatexParser:
     if country == "IT":
         return CcissParser(downloader=GenericDownloader())
     kwargs = COUNTRY_CONFIGS[country]["parser_kwargs"]
@@ -93,7 +93,11 @@ def _build_parser(country: str) -> AlertParser:
 
 
 def _get_output_file(country: str) -> Path:
-    return CONSTANTS.COMMON.DATA_DIR / COUNTRY_CONFIGS[country]["output_dir"] / "overlay_data.json"
+    return (
+        CONSTANTS.COMMON.DATA_DIR
+        / COUNTRY_CONFIGS[country]["output_dir"]
+        / "overlay_data.json"
+    )
 
 
 async def _run_country_once(
@@ -132,7 +136,7 @@ async def _run_country_loop(
         filter_config=cfg["filter_config"],
         parser=_build_parser(country),
         skip_filter=skip_filter,
-        country_code=country
+        country_code=country,
     )
 
 
@@ -142,16 +146,22 @@ async def main() -> None:
     countries = list(COUNTRY_CONFIGS) if args.country == "all" else [args.country]
 
     if args.once:
-        await gather(*(
-            _run_country_once(c, roads, args.max_items, args.no_filter)
-            for c in countries
-        ))
+        await gather(
+            *(
+                _run_country_once(c, roads, args.max_items, args.no_filter)
+                for c in countries
+            )
+        )
         return
 
-    await gather(*(
-        _run_country_loop(c, roads, args.max_items, args.interval_seconds, args.no_filter)
-        for c in countries
-    ))
+    await gather(
+        *(
+            _run_country_loop(
+                c, roads, args.max_items, args.interval_seconds, args.no_filter
+            )
+            for c in countries
+        )
+    )
 
 
 if __name__ == "__main__":

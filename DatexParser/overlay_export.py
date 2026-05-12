@@ -15,7 +15,7 @@ from .datex_models import TruckDashboardAlert
 class AlertParser(Protocol):
     @property
     def alerts(self) -> list[TruckDashboardAlert]: ...
-    async def get_parsed_data(self, **kwargs: Any) -> list[TruckDashboardAlert]: ...
+    async def get_parsed_data(self) -> list[TruckDashboardAlert]: ...
 
 
 def _is_road_closed(alert: TruckDashboardAlert) -> bool:
@@ -115,7 +115,9 @@ async def build_overlay_payload(
         "generated_at": datetime.now(UTC).isoformat(),
         "total": len(merged),
         "roads_filter": roads or [],
-        "severity_rule": "none (debug)" if skip_filter else "medium_or_higher_plus_road_closed",
+        "severity_rule": "none (debug)"
+        if skip_filter
+        else "medium_or_higher_plus_road_closed",
         "alerts": merged,
     }
 
@@ -137,7 +139,10 @@ async def export_overlay_data(
 ) -> Path:
     target = output_file or (CONSTANTS.COMMON.DATA_DIR / "overlay_data.json")
     payload = await build_overlay_payload(
-        roads=roads, max_items=max_items, filter_config=filter_config, parser=parser,
+        roads=roads,
+        max_items=max_items,
+        filter_config=filter_config,
+        parser=parser,
         skip_filter=skip_filter,
     )
     write_overlay_payload(payload, target)
@@ -146,8 +151,8 @@ async def export_overlay_data(
 
 async def run_overlay_export_loop(
     parser: AlertParser,
-    country_code : str,
-    interval_seconds : int = 300,
+    country_code: str,
+    interval_seconds: int = 300,
     output_file: Path | None = None,
     roads: list[str] | None = None,
     max_items: int = 50,
