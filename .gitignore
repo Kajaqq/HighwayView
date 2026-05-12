@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
 # Virtual environment
 .venv/
 venv/
@@ -24,5 +25,9 @@ package-lock.json
 # WSL remains
 *:Zone.Identifier
 
-data/overlay/*.json
+# Data files
+*.json
+*.xml
+data/html
+data/images
 
