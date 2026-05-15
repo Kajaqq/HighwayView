@@ -2,7 +2,8 @@ import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
-import asyncio
+
+import winloop
 
 from Downloaders.spain_downloader import SpainDownloader
 from Parsers.base_parser import BaseParser
@@ -77,10 +78,8 @@ async def get_parsed_data(
         Any: The parsed camera data.
     """
     parser = SpainParser(downloader=SpainDownloader())
-    return await parser.get_parsed_data(
-        output_file=output_file, output_folder=output_folder
-    )
+    return await parser.get_parsed_data(output_file=output_file, output_folder=output_folder)
 
 
 if __name__ == "__main__":
-    asyncio.run(get_parsed_data(output_folder=Path("../data")))
+    winloop.run(get_parsed_data(output_folder=Path("../data")))
