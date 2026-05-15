@@ -1,10 +1,10 @@
-import winloop
-import aiohttp
 import re
+
+import aiohttp
+import winloop
 
 from config import CONSTANTS
 from Downloaders.base_downloader import GenericDownloader
-
 
 BASE_URL: str = CONSTANTS.FRANCE.ASFA.BASE_URL
 AUTH_URL: str = CONSTANTS.FRANCE.ASFA.AUTH_URL

@@ -1,15 +1,16 @@
 import ast
 import json
 import re
-import winloop
 from collections import defaultdict
-from typing import Any
 from pathlib import Path
+from typing import Any
 
-from tools.utils import convert_to_wgs84, save_json
-from Downloaders.france_downloader import FranceDownloader
+import winloop
+
 from config import CONSTANTS
+from Downloaders.france_downloader import FranceDownloader
 from Parsers.base_parser import BaseParser
+from tools.utils import convert_to_wgs84, save_json
 
 ROAD_REGEX = re.compile(r"\b(A|N|RN|D|M)(\d+)\b", re.IGNORECASE)
 PR_REGEX = re.compile(r"PR\s*(\d+)(?:\+(\d+))?", re.IGNORECASE)

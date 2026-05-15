@@ -5,9 +5,7 @@ from typing import Any
 from natsort import natsorted
 
 from config import CONSTANTS
-
 from tools.utils import load_json
-
 
 COUNTRY_MAP: dict[str, str] = CONSTANTS.COMMON.COUNTRY_MAP
 SEPARATOR: str = CONSTANTS.COMMON.SEPARATOR

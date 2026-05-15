@@ -1,11 +1,12 @@
-import winloop
 from collections import defaultdict
-from typing import Any
 from pathlib import Path
+from typing import Any
+
+import winloop
 
 from Downloaders.uk_downloader import UKDownloader
-from tools.utils import load_json
 from Parsers.base_parser import BaseParser
+from tools.utils import load_json
 
 
 class UKParser(BaseParser):

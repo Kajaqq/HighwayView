@@ -1,12 +1,13 @@
-from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from pathlib import Path
 from typing import NamedTuple
 
 import dhash
-import pybktree
 import ffmpeg
 import ffmpeg.filters
+import pybktree
 from PIL import Image
+
 from config import CONSTANTS
 
 SEP: str = CONSTANTS.COMMON.SEPARATOR
@@ -29,7 +30,6 @@ def get_video_frame(video_file: Path) -> None:
     output_path = video_file.with_suffix(".png")
     input_file = ffmpeg.input(str(video_file), ss="00:00:00")
     # scale all images to the same size
-    # save the first frame as a PNG
     ffmpeg.output(
         input_file, filename=str(output_path), vframes=1, vf="scale=352:288"
     ).run(overwrite_output=True, quiet=True)

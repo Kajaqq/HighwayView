@@ -1,10 +1,10 @@
 import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from collections.abc import Callable
 
-from tools.utils import load_json, get_country
 from config import CONSTANTS
+from tools.utils import get_country, load_json
 
 # ==========================================
 # MASTER HIGHWAY SORTING LISTS

@@ -1,13 +1,14 @@
-import winloop
 import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from tools.utils import load_json
+import winloop
+
 from config import CONSTANTS
 from Downloaders.italy_downloader import ItalyDownloader
 from Parsers.base_parser import BaseParser
+from tools.utils import load_json
 
 CAMERA_BASE_URL: str = CONSTANTS.ITALY.CAMERA_URL
 

@@ -5,8 +5,8 @@ from typing import Any
 
 from natsort import natsorted
 
-from tools.utils import create_url, load_json, get_country
 from config import CONSTANTS
+from tools.utils import create_url, get_country, load_json
 
 COUNTRY_MAP: dict[str, str] = CONSTANTS.COMMON.COUNTRY_MAP
 HTML_DIR: Path = Path(CONSTANTS.COMMON.HTML_DIR)
@@ -327,10 +327,10 @@ def generate_html(
                         console.error(`Video load error for ${{camera.id}}:`, e);
                         camera.failed = true;
                         camera.lastFailed = Date.now();
-                        
+
                         slide.innerHTML = '';
                         slide.appendChild(createErrorScreen(camera));
-                        
+
                         // If error happens on active slide, skip quickly
                         if (slide.classList.contains('active') && !isTransitioning) {{
                             setTimeout(nextSlide, 2000);
@@ -356,7 +356,7 @@ def generate_html(
 
                 slide.appendChild(mediaElement);
 
-                // Add info overlay 
+                // Add info overlay
                 if (country) {{
                     const info = document.createElement('div');
                     info.className = 'slide-info';
@@ -438,7 +438,7 @@ def generate_html(
                 // Find next viable camera (skip failed ones)
                 let attempts = 0;
                 let nextIndex = (currentIndex + 1) % cameras.length;
-                
+
                 while (attempts < cameras.length) {{
                     const cam = cameras[nextIndex];
                     if (cam.failed) {{

@@ -6,10 +6,10 @@ import aiohttp
 import winloop
 from tqdm.asyncio import tqdm
 
-from tools.utils import load_json, create_url, save_json, get_country
 import tools.diff_hash as diff_hash
-from Downloaders.base_downloader import GenericDownloader, HTTPError
 from config import CONSTANTS
+from Downloaders.base_downloader import GenericDownloader, HTTPError
+from tools.utils import create_url, get_country, load_json, save_json
 
 SEP: str = CONSTANTS.COMMON.SEPARATOR
 DEFAULT_RATE_LIMIT: int = CONSTANTS.COMMON.RATE_LIMIT
