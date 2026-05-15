@@ -3,12 +3,10 @@ name = "HighwayView"
 version = "0.6.0"
 description = "Gets EU Traffic cams into a readable format sorted by highways"
 requires-python = ">=3.14"
-target-version = "py314"
 dependencies = [
     "dhash>=1.4",
     "pillow>=12.2.0",
     "pybktree>=1.1",
-    "ruff>=0.15.10",
     "tqdm>=4.67.3",
     "typed-ffmpeg>=3.11",
     "tzdata>=2025.3",
@@ -21,6 +19,10 @@ dependencies = [
     "lxml>=5.0.0",
     "pydantic>=2.0",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
 
 [tool.ruff.lint]
 extend-select = [
@@ -36,5 +38,6 @@ ignore = ['TRY003']
 
 [dependency-groups]
 dev = [
-    "pdoc>=16.0.0"
+    "pdoc>=16.0.0",
+    "ruff>=0.15.13",
 ]

@@ -9,9 +9,7 @@ __pycache__/
 venv/
 ENV/
 env/
-node_modules/
-package.json
-package-lock.json
+uv.lock
 
 # IDE
 .idea/
@@ -30,4 +28,3 @@ package-lock.json
 *.xml
 data/html
 data/images
-

@@ -2,9 +2,11 @@
 
 ## Overview
 
-HighwayView is a toolkit designed to scrap and aggregate the highway cameras from major European countries.
+HighwayView is a toolkit designed to scrape and aggregate highway cameras from
+major European countries.
 
-It handles scraping, aggregation, deduplication, verification, and visualization.
+It handles scraping, aggregation, deduplication, verification, visualization,
+and DATEX II / CCISS traffic alert overlays for OBS Browser Source.
 
 ## Supported Functionalities
 
@@ -13,7 +15,8 @@ It handles scraping, aggregation, deduplication, verification, and visualization
 - **Slideshow Generation** (`create_html.py`): Create optimized HTML slideshows from the camera data. Features lazy loading, memory management, and error handling, making it ideal for streaming software like OBS.
 - **Curated Camera Loops** (`create_camera_loop.py`): Automatically generate ~10-minute curated cycles of the most important national highways for each supported country.
 - **Data Inspection** (`list_cameras.py`): Command-line utility to quickly summarize highway and camera counts from parsed datasets.
-- **DATEX II Integration for Spain** (`get_datex_spain.py`): Automatically download and parse DATEX II road accidents data for Spain.
+- **DATEX II / CCISS Overlays** (`DatexParser module`): Export traffic alerts for Spain, France, and Italy to per-country OBS overlay data files.
+
 ## Usage Examples
 
 Ensure you have the `uv` package manager installed.
@@ -53,23 +56,44 @@ Print a formatted list of all highways and their valid cameras from a generated 
 uv run tools/list_cameras.py data/cameras_it_online.json
 ```
 
-**Generate Spain DATEX-II Overlay**
-Generate `data/overlay_data.json` once:
+### DatexParser module examples 
+**Generate Traffic Alert Overlays**
+Generate overlay data for all configured DATEX II / CCISS countries once:
 
 ```bash
-uv run get_datex_spain.py --once
+uv run get_datex.py --once
+```
+
+Generate a single country overlay:
+
+```bash
+uv run get_datex.py --country ES --once
+```
+
+Use a custom road whitelist:
+
+```bash
+uv run get_datex.py --country FR --roads A7,A16 --once
+```
+
+Disable heuristic filtering:
+
+```bash
+uv run get_datex.py --no-filter --once
 ```
 
 Run continuously (refresh every 5 minutes by default):
 
 ```bash
-uv run get_datex_spain.py
+uv run get_datex.py
 ```
 
-Use the overlay UI file:
+Use the per-country overlay UI files:
 
 ```text
-docs/overlay/index.html
+data/overlay_spain/index.html
+data/overlay_france/index.html
+data/overlay_italy/index.html
 ```
 
 ## Project Structure
@@ -77,28 +101,34 @@ docs/overlay/index.html
 The project is split into three modules and an orchestration script.
 
 - `main.py`: Orchestrates the scraping, parsing, checking, and visualization of camera data.
+- `get_datex.py`: Utilizes DatexParser to export DATEX II / CCISS traffic alerts to JSON files.
+- `config.py`: Stores country-specific constants and shared settings.
 - `Downloaders/`: Contains the scraping module for each country.
 - `Parsers/`: Contains the parsing module for each country.
+- `DatexParser/`: Contains DATEX II XML parsing, Italian CCISS parsing, heuristic filtering, and overlay export code.
 - `tools/`: Contains the tools for checking, and visualizing camera data.
-- `data/`: Contains the raw and processed camera data.
+- `data/`: Contains the raw and processed camera data plus per-country overlay assets.
 
 ## Documentation
 
-The project includes API reference documentation generated from Python docstrings.
-To explore the documentation, open the [`docs/index.html`](docs/index.html) file in your web browser.
+- **Architecture**: [`docs/Architecture.md`](docs/Architecture.md) — subsystem design, data flow, and component overview.
+- **API Reference**: Generated from docstrings. Open [`docs/index.html`](docs/index.html) in a browser.
 
-## Supported Sources
+## Supported Sources 
 
 - **France**
   - Bison Futé
   - ASFA (Association des Sociétés Françaises d'Autoroutes)
+  - DATEX II Feed
 - **Italy**
   - Autostrade de Italia
   - Autostrada del Brennero
   - Autostrada Brescia Verona Vicenza Padova (ABP)
   - Concessioni Autostradali Venete (CAV)
   - SATAP (Società Autostrada Torino-Alessandria-Piacenza S.p.A.)
+  - CCISS Feed
 - **Spain**
   - DGT (Dirección General de Tráfico)
+  - DATEX II Feed
 - **UK**
   - Highways England
