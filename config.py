@@ -203,7 +203,7 @@ class CONSTANTS:
 
     class SPAIN:
         BASE_URL = "https://etraffic.dgt.es/"
-        CAMERA_URL = "https://infocar.dgt.es/etraffic/data/camaras/"
+        CAMERA_URL = BASE_URL + "camarasEtraffic/"
         CAMERA_API = BASE_URL + "etrafficWEB/api/cache/getCamaras"
         DATEX_OVERLAY_DIR = "overlay_spain"
         DATEX_ROADS = [
