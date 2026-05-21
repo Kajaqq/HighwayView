@@ -1,5 +1,6 @@
 import copy
 import inspect
+import asyncio
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -135,12 +136,12 @@ class BaseParser(ABC):
         if match_by not in {"coordinates", "km_point"}:
             raise ValueError("match_by must be 'coordinates' or 'km_point'")
 
-        def _coords(cam: dict[str, Any]) -> tuple[Any | None, Any | None] | None:
+        def _coords(cam: dict[str, Any]) -> tuple[float, float] | None:
             """Extracts (X, Y) coordinates from a camera."""
             c = cam.get("coords") or {}
             x, y = c.get("X"), c.get("Y")
             if x is not None and y is not None:
-                return x, y
+                return float(x), float(y)
             return None
 
         def _spatial_match(cam1: dict[str, Any], cam2: dict[str, Any]) -> bool:
@@ -258,12 +259,11 @@ class BaseParser(ABC):
         if inspect.iscoroutinefunction(self.parse):
             parsed_data = await self.parse(raw_data)
         else:
-            parsed_data = self.parse(raw_data)
+            parsed_data = await asyncio.to_thread(self.parse, raw_data)
 
-        if output_file:
-            save_json(parsed_data, output_file)
-        elif output_folder:
+        if output_folder:
             file_name = f"cameras_{self.country.lower()}{'_gov' if self.country in ['ES', 'UK'] else ''}.json"  # France(FR) and Italy(IT) handle saving independently
             save_json(parsed_data, Path(output_folder) / file_name)
-
+        elif output_file:
+            save_json(parsed_data, output_file)
         return parsed_data

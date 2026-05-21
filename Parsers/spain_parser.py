@@ -65,7 +65,7 @@ class SpainParser(BaseParser):
 
 
 async def get_parsed_data(
-    output_file: str | Path | None = None, output_folder: str | Path | None = None
+    output_folder: str | Path | None = None, output_file: str | Path | None = None,
 ) -> Any:
     """
     Wrapper function for SpainParser.get_parsed_data.
@@ -78,8 +78,11 @@ async def get_parsed_data(
         Any: The parsed camera data.
     """
     parser = SpainParser(downloader=SpainDownloader())
-    return await parser.get_parsed_data(output_file=output_file, output_folder=output_folder)
+    return await parser.get_parsed_data(output_folder=output_folder, output_file=output_file)
 
 
 if __name__ == "__main__":
-    winloop.run(get_parsed_data(output_folder=Path("../data")))
+    output = Path('data')
+    winloop.run(
+        get_parsed_data(output_folder=output)
+    )

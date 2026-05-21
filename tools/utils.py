@@ -65,12 +65,12 @@ def save_json(json_data: Any, output: Path | str) -> None:
         raise OSError(f"Failed to write file {output_path}: {e}") from e
 
 
-def load_json(json_data: Path | str | list[Any] | dict[str, Any]) -> Any:
+def load_json(json_data: Path | str | bytes | list[Any] | dict[str, Any]) -> Any:
     """
     Loads JSON data from a file, raw string, or passes it through if already dict/list.
 
     Args:
-        json_data (Path | str | list | dict): The source data.
+        json_data (Path | str | bytes | list | dict): The source data.
 
     Raises:
         OSError: If reading the file fails.

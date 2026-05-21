@@ -46,7 +46,7 @@ class ItalyParser(BaseParser):
         try:
             data = load_json(raw_data)
         except Exception as e:
-            print(f"Error parsing Autostrade JSON: {e}")
+            print(f"Error loading Autostrade JSON: {e}")
             return []
 
         grouped_highways: dict[str, list[dict[str, Any]]] = defaultdict(list)
