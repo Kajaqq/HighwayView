@@ -1,4 +1,5 @@
 const DATA_URL = "./overlay_data.json";
+const SCRIPT_DATA_URL = "./overlay_data.js";
 const FETCH_INTERVAL_MS = 10_000;
 const SCROLL_INTERVAL_MS = 15_000;
 const DEFAULT_VISIBLE_ALERTS = 3;
@@ -289,14 +290,46 @@ function setScrollTimer() {
   scrollTimer = setInterval(scrollDown, SCROLL_INTERVAL_MS);
 }
 
+function loadScriptPayload() {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `${SCRIPT_DATA_URL}?t=${Date.now()}`;
+    script.onload = () => {
+      script.remove();
+      if (window.OVERLAY_DATA && typeof window.OVERLAY_DATA === "object") {
+        resolve(window.OVERLAY_DATA);
+        return;
+      }
+      reject(new Error("Overlay data script did not define data"));
+    };
+    script.onerror = () => {
+      script.remove();
+      reject(new Error("Overlay data script unavailable"));
+    };
+    window.OVERLAY_DATA = null;
+    document.head.appendChild(script);
+  });
+}
+
+async function loadJsonPayload() {
+  const response = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+async function loadPayload() {
+  try {
+    return await loadScriptPayload();
+  } catch (scriptError) {
+    if (window.location.protocol === "file:") throw scriptError;
+    return loadJsonPayload();
+  }
+}
+
 async function loadAlerts() {
   try {
-    const response = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) {
-      statusLineEl.textContent = `Overlay data unavailable (HTTP ${response.status})`;
-      return;
-    }
-    const payload = await response.json();
+    const payload = await loadPayload();
     const incomingAlerts = (Array.isArray(payload.alerts) ? payload.alerts : []).filter(hasLocationInfo);
     const signature = incomingAlerts
       .map((a) => `${a.record_id || ""}:${a.version_time || a.creation_time || a.start_time || ""}`)

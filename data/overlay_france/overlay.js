@@ -1,7 +1,8 @@
 const DATA_URL = "./overlay_data.json";
+const SCRIPT_DATA_URL = "./overlay_data.js";
 const FETCH_INTERVAL_MS = 10_000;
 const SCROLL_INTERVAL_MS = 15_000;
-const MAX_VISIBLE_ALERTS = 3;
+const DEFAULT_VISIBLE_ALERTS = 3;
 const ITEM_HEIGHT_PX = 64;
 const ITEM_GAP_PX = 8;
 const STEP_PX = ITEM_HEIGHT_PX + ITEM_GAP_PX;
@@ -123,6 +124,8 @@ function mergeAlertsBySituation(alerts) {
   return merged;
 }
 
+const overlayContainerEl = document.getElementById("overlay-container");
+const headerEl = document.getElementById("header");
 const alertsListEl = document.getElementById("alerts-list");
 const statusLineEl = document.getElementById("status-line");
 
@@ -131,6 +134,49 @@ let scrollIndex = 0;
 let scrollTimer = null;
 let lastAlertSignature = "";
 let isAnimating = false;
+let visibleAlertCount = DEFAULT_VISIBLE_ALERTS;
+
+function parseHeightParam() {
+  const rawHeight = new URLSearchParams(window.location.search).get("height");
+  if (!rawHeight) return null;
+
+  const height = Number.parseInt(rawHeight, 10);
+  return Number.isFinite(height) && height > 0 ? height : null;
+}
+
+function readPx(style, property) {
+  const value = Number.parseFloat(style[property]);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function alertSlotsForHeight(height) {
+  const containerStyle = window.getComputedStyle(overlayContainerEl);
+  const paddingY = readPx(containerStyle, "paddingTop") + readPx(containerStyle, "paddingBottom");
+  const borderY = readPx(containerStyle, "borderTopWidth") + readPx(containerStyle, "borderBottomWidth");
+  const rowGap = readPx(containerStyle, "rowGap") || readPx(containerStyle, "gap");
+  const chromeHeight = headerEl.offsetHeight + statusLineEl.offsetHeight + paddingY + borderY + rowGap * 2;
+  const availableListHeight = height - chromeHeight;
+
+  return Math.max(1, Math.floor((availableListHeight + ITEM_GAP_PX) / STEP_PX));
+}
+
+function setVisibleAlertCount(count) {
+  visibleAlertCount = count;
+  const listHeight = ITEM_HEIGHT_PX * count + ITEM_GAP_PX * (count - 1);
+  alertsListEl.style.setProperty("--alerts-list-height", `${listHeight}px`);
+}
+
+function applyHeightParam() {
+  const height = parseHeightParam();
+  if (!height) {
+    setVisibleAlertCount(DEFAULT_VISIBLE_ALERTS);
+    return;
+  }
+
+  overlayContainerEl.style.setProperty("--overlay-height", `${height}px`);
+  overlayContainerEl.style.setProperty("--overlay-min-height", `${height}px`);
+  setVisibleAlertCount(alertSlotsForHeight(height));
+}
 
 function severityClass(severity) {
   const key = (severity || "").toLowerCase();
@@ -250,20 +296,20 @@ function render(alerts) {
 }
 
 function visibleSlice(extra = 0) {
-  if (allAlerts.length <= MAX_VISIBLE_ALERTS) return allAlerts;
+  if (allAlerts.length <= visibleAlertCount) return allAlerts;
   const start = scrollIndex % allAlerts.length;
-  const end = start + MAX_VISIBLE_ALERTS + extra;
+  const end = start + visibleAlertCount + extra;
   if (end <= allAlerts.length) return allAlerts.slice(start, end);
   return allAlerts.slice(start).concat(allAlerts.slice(0, end - allAlerts.length));
 }
 
 function renderWindow() {
-  const extra = allAlerts.length > MAX_VISIBLE_ALERTS ? 1 : 0;
+  const extra = allAlerts.length > visibleAlertCount ? 1 : 0;
   render(visibleSlice(extra));
 }
 
 function scrollDown() {
-  if (!allAlerts.length || allAlerts.length <= MAX_VISIBLE_ALERTS || isAnimating) return;
+  if (!allAlerts.length || allAlerts.length <= visibleAlertCount || isAnimating) return;
 
   const track = alertsListEl.querySelector(".alerts-track");
   if (!track) {
@@ -287,14 +333,46 @@ function setScrollTimer() {
   scrollTimer = setInterval(scrollDown, SCROLL_INTERVAL_MS);
 }
 
+function loadScriptPayload() {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `${SCRIPT_DATA_URL}?t=${Date.now()}`;
+    script.onload = () => {
+      script.remove();
+      if (window.OVERLAY_DATA && typeof window.OVERLAY_DATA === "object") {
+        resolve(window.OVERLAY_DATA);
+        return;
+      }
+      reject(new Error("Overlay data script did not define data"));
+    };
+    script.onerror = () => {
+      script.remove();
+      reject(new Error("Overlay data script unavailable"));
+    };
+    window.OVERLAY_DATA = null;
+    document.head.appendChild(script);
+  });
+}
+
+async function loadJsonPayload() {
+  const response = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+async function loadPayload() {
+  try {
+    return await loadScriptPayload();
+  } catch (scriptError) {
+    if (window.location.protocol === "file:") throw scriptError;
+    return loadJsonPayload();
+  }
+}
+
 async function loadAlerts() {
   try {
-    const response = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) {
-      statusLineEl.textContent = `Overlay data unavailable (HTTP ${response.status})`;
-      return;
-    }
-    const payload = await response.json();
+    const payload = await loadPayload();
     const rawAlerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     const incomingAlerts = mergeAlertsBySituation(rawAlerts).filter(hasLocationInfo);
     const signature = incomingAlerts
@@ -315,5 +393,6 @@ async function loadAlerts() {
   }
 }
 
+applyHeightParam();
 loadAlerts().catch(console.error);
 setInterval(loadAlerts, FETCH_INTERVAL_MS);

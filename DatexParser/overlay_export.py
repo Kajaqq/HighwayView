@@ -124,8 +124,10 @@ async def build_overlay_payload(
 
 def write_overlay_payload(payload: dict[str, Any], output_file: Path) -> None:
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    output_file.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    payload_json = json.dumps(payload, ensure_ascii=False, indent=2)
+    output_file.write_text(payload_json, encoding="utf-8")
+    output_file.with_suffix(".js").write_text(
+        f"window.OVERLAY_DATA = {payload_json};\n", encoding="utf-8"
     )
 
 
