@@ -46,13 +46,13 @@ class BaseDownloader(ABC):
 
         Returns:
             tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
-                A tuple containing the headers dictionary, timeout context, and TCP connector.
+                A tuple containing the headers, timeout context, and TCP connector.
         """
 
         headers: dict[str, str] = CONSTANTS.COMMON.DEFAULT_HEADERS.copy()
         timeout = aiohttp.ClientTimeout(total=self.timeout_int)
 
-        # This shouldn't be required but for some reason it is
+        # This shouldn't be required, but for some reason it is
         resolver = aiohttp.AsyncResolver(nameservers=["8.8.8.8", "1.1.1.1"])
         connector = aiohttp.TCPConnector(
             resolver=resolver,
@@ -199,6 +199,6 @@ class GenericDownloader(BaseDownloader):
 
     async def get_data(self) -> None:
         """
-        No-op implementation of get_data for GenericDownloader.
+        Calls get_data from the subclass BaseDownloader.
         """
         pass
