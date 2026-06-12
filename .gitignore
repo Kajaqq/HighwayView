@@ -26,5 +26,6 @@ uv.lock
 # Data files
 *.json
 *.xml
+*overlay_data.js
 data/html
 data/images
