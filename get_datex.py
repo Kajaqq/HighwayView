@@ -3,13 +3,12 @@ from asyncio import gather
 from pathlib import Path
 
 import winloop
-
+from config import CONSTANTS
 from DatexParser.cciss_parser import CcissParser
 from DatexParser.datex_filter import FilterConfig
 from DatexParser.datex_parser import DatexParser
 from DatexParser.overlay_export import export_overlay_data, run_overlay_export_loop
 from Downloaders.base_downloader import GenericDownloader
-from config import CONSTANTS
 
 COUNTRY_CONFIGS: dict[str, dict] = {
     "ES": {
@@ -54,11 +53,8 @@ COUNTRY_CONFIGS: dict[str, dict] = {
 }
 
 
-def _parse_roads(raw_roads: str) -> list[str]:
-    return [road.strip() for road in raw_roads.split(",") if road.strip()]
-
-
 def parse_args() -> Namespace:
+
     parser = ArgumentParser(
         description="Export DATEX traffic alerts to overlay_data.json for OBS Browser Source."
     )
@@ -96,6 +92,10 @@ def parse_args() -> Namespace:
         help="Disable heuristic filtering and severity gating (debug mode).",
     )
     return parser.parse_args()
+
+
+def _parse_roads(raw_roads: str) -> list[str]:
+    return [road.strip() for road in raw_roads.split(",") if road.strip()]
 
 
 def _build_parser(country: str) -> CcissParser | DatexParser:

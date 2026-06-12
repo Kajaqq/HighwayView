@@ -22,7 +22,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from Downloaders.base_downloader import GenericDownloader
+from Downloaders.base_downloader import GenericDownloader, HTTPError
 from Parsers.base_parser import BaseParser
 from tools.utils import haversine_km
 
@@ -37,6 +37,7 @@ _DATEX_V2_NAMESPACE_MARKER = "/schema/2/"
 _XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 _ROAD_NUMBER_PADDING_RE = re.compile(r"([A-Za-z])0+(?=\d)")
 _FRENCH_PR_RE = re.compile(r"^\d{2}PR(\d+)")
+_DATEX_HTTP_RETRIES = 3
 
 _FRENCH_DETAIL_TAGS: tuple[str, ...] = (
     "d2:accidentType",
@@ -171,7 +172,16 @@ class DatexParser(BaseParser):
         """
         if self.downloader is None:
             raise RuntimeError("DatexParser requires a downloader to call get_parsed_data()")
-        raw_data = await self.downloader.download(self.datex_url)
+        for retry in range(_DATEX_HTTP_RETRIES + 1):
+            try:
+                raw_data = await self.downloader.download(self.datex_url)
+                break
+            except HTTPError:
+                if retry == _DATEX_HTTP_RETRIES:
+                    raise
+        else:
+            raise RuntimeError("DATEX download failed without an HTTP error")
+
         alerts = await self.parse(raw_data)
 
         if output_file:
