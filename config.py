@@ -486,3 +486,8 @@ class CONSTANTS:
                 "M60",  # Manchester Outer Ring
                 "M42",  # Birmingham Box (C-shaped, circular logic works best here)
             ]
+
+    class NL:
+        BASE_URL: str = "https://api.rwsverkeersinfo.nl/api/"
+        CAMERA_API: str =  f"{BASE_URL}/cameras/"
+        CAMERA_URL: str =  "https://stream.inmoves.nl/{camera_id}/embed"
