@@ -364,9 +364,7 @@ async def get_parsed_data(
         Any: The parsed camera data.
     """
     parser = ItalyParser(downloader=ItalyDownloader())
-    return await parser.get_parsed_data(
-        output_file=output_file, output_folder=output_folder
-    )
+    return await parser.get_parsed_data(output_file, output_folder)
 
 
 if __name__ == "__main__":
