@@ -488,6 +488,9 @@ class CONSTANTS:
             ]
 
     class NL:
+        REFERER_URL: str = 'https://www.rwsverkeersinfo.nl/'
+        REFERER_HEADER = {'Referer': REFERER_URL}
         BASE_URL: str = "https://api.rwsverkeersinfo.nl/api/"
-        CAMERA_API: str =  f"{BASE_URL}/cameras/"
-        CAMERA_URL: str =  "https://stream.inmoves.nl/{camera_id}/embed"
+        CAMERA_API: str =  BASE_URL + "cameras/"
+        CAMERA_URL: str =  "https://stream.inmoves.nl/"
+        IMAGE_EXT = ".jpg"

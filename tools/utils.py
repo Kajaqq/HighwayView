@@ -110,28 +110,35 @@ def create_url(
     Returns:
         tuple[str, str | None]: A tuple consisting of the full URL and the file extension.
     """
-    if base == "FR":
-        if camera_type == "asfa_vid":
-            base_url: str = CONSTANTS.FRANCE.ASFA.CAMERA_URL
-            ext: str = CONSTANTS.FRANCE.ASFA.VIDEO_EXT
-            return base_url.format(camera_id=camera_id), ext
-        base_url = CONSTANTS.FRANCE.CAMERA_URL
-        ext_dict = {
-            "vid": CONSTANTS.FRANCE.VIDEO_EXT,
-            "img": CONSTANTS.FRANCE.IMAGE_EXT,
-        }
-        ext2 = ext_dict.get(camera_type)
-        return f"{base_url}{camera_id}{ext2}", ext2
-    if base == "ES":
-        base_url = CONSTANTS.SPAIN.CAMERA_URL
-        ext2 = CONSTANTS.SPAIN.IMAGE_EXT
-        return f"{base_url}{camera_id}{ext2}", ext2
-    if base == "UK":
-        base_url = CONSTANTS.UK.CAMERA_URL
-        ext2 = CONSTANTS.UK.IMAGE_EXT
-        return f"{base_url}{camera_id}{ext2}", ext2
-    else:
-        raise ValueError("Invalid data")
+    match base:
+        case "FR":
+            match camera_type:
+                case "asfa_vid":
+                    base_url: str = CONSTANTS.FRANCE.ASFA.CAMERA_URL
+                    ext: str = CONSTANTS.FRANCE.ASFA.VIDEO_EXT
+                    return base_url.format(camera_id=camera_id), ext
+                case _:
+                    base_url = CONSTANTS.FRANCE.CAMERA_URL
+                    ext_dict = {
+                        "vid": CONSTANTS.FRANCE.VIDEO_EXT,
+                        "img": CONSTANTS.FRANCE.IMAGE_EXT,
+                    }
+                    ext2 = ext_dict.get(camera_type)
+                    return f"{base_url}{camera_id}{ext2}", ext2
+        case "ES":
+            base_url = CONSTANTS.SPAIN.CAMERA_URL
+            ext = CONSTANTS.SPAIN.IMAGE_EXT
+            return f"{base_url}{camera_id}{ext}", ext
+        case "UK":
+            base_url = CONSTANTS.UK.CAMERA_URL
+            ext = CONSTANTS.UK.IMAGE_EXT
+            return f"{base_url}{camera_id}{ext}", ext
+        case "NL":
+            base_url = CONSTANTS.NL.CAMERA_URL
+            ext = CONSTANTS.NL.IMAGE_EXT
+            return f"{base_url}{camera_id}", ext
+        case _:
+            raise ValueError("Invalid data")
 
 
 def unix_to_datetime(

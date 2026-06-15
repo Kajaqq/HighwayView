@@ -98,11 +98,11 @@ async def check_camera(
         # Special case for Italy where urls are in the data directly
         url = camera_type
         ext = CONSTANTS.ITALY.VIDEO_EXT
-
     async with rate_limiter:
         response_bytes = b""
+        headers = CONSTANTS.NL.REFERER_HEADER if source == "NL" else None
         try:
-            async with client.get(url, allow_redirects=True) as response:
+            async with client.get(url, allow_redirects=True, headers=headers) as response:
                 response.raise_for_status()
                 response_bytes = await response.read()
                 status_code = response.status

@@ -262,7 +262,7 @@ class BaseParser(ABC):
             parsed_data = await asyncio.to_thread(self.parse, raw_data)
 
         if output_folder:
-            file_name = f"cameras_{self.country.lower()}{'_gov' if self.country in ['ES', 'UK'] else ''}.json"  # France(FR) and Italy(IT) handle saving independently
+            file_name = f"cameras_{self.country.lower()}.json"
             save_json(parsed_data, Path(output_folder) / file_name)
         elif output_file:
             save_json(parsed_data, output_file)
