@@ -52,6 +52,11 @@ def get_camera_urls(
                 if country == "IT":
                     url = camera["url"]
                     media_type = "video"
+                elif country == "NL":
+                    camera_type = camera.get("camera_type", "")
+                    url, _ = create_url(country, cid, camera_type)
+                    url = f"{url.rstrip('/')}/embed"
+                    media_type = "iframe"
                 else:
                     camera_type = camera.get("camera_type", "")
                     url, _ = create_url(country, cid, camera_type)
@@ -85,6 +90,11 @@ def get_camera_urls(
             if country == "IT":
                 url = camera["url"]
                 media_type = "video"
+            elif country == "NL":
+                camera_type = camera.get("camera_type", "")
+                url, _ = create_url(country, camera_id, camera_type)
+                url = f"{url.rstrip('/')}/embed"
+                media_type = "iframe"
             else:
                 camera_type = camera.get("camera_type", "")
                 url, _ = create_url(country, camera_id, camera_type)
@@ -161,10 +171,17 @@ def generate_html(
         }}
 
         .slide img,
-        .slide video {{
+        .slide video,
+        .slide iframe {{
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+        }}
+
+        .slide iframe {{
+            width: 100%;
+            height: 100%;
+            border: 0;
         }}
 
         .slide-info {{
@@ -280,7 +297,7 @@ def generate_html(
                 mediaElement.pause();
                 mediaElement.removeAttribute('src');
                 mediaElement.load(); // This releases the video resource
-            }} else if (mediaElement.tagName === 'IMG') {{
+            }} else if (mediaElement.tagName === 'IMG' || mediaElement.tagName === 'IFRAME') {{
                 mediaElement.removeAttribute('src');
             }}
         }}
@@ -290,7 +307,7 @@ def generate_html(
                 const slide = activeSlides.get(index);
                 if (!slide) return;
 
-                const mediaElement = slide.querySelector('img, video');
+                const mediaElement = slide.querySelector('img, video, iframe');
                 cleanupMedia(mediaElement);
 
                 slide.remove();
@@ -315,7 +332,17 @@ def generate_html(
 
                 // Create media element
                 let mediaElement;
-                if (camera.type === 'video') {{
+                if (camera.type === 'iframe') {{
+                    mediaElement = document.createElement('iframe');
+                    mediaElement.loading = 'eager';
+                    mediaElement.allow = 'autoplay; fullscreen';
+
+                    mediaElement.onerror = function(e) {{
+                        console.error(`Frame load error for ${{camera.id}}:`, e);
+                        slide.innerHTML = '';
+                        slide.appendChild(createErrorScreen(camera));
+                    }};
+                }} else if (camera.type === 'video') {{
                     mediaElement = document.createElement('video');
                     mediaElement.muted = true;
                     mediaElement.autoplay = isActive;
@@ -375,7 +402,7 @@ def generate_html(
 
         // Load media with cache-busting for images
         function loadMedia(index, mediaElement, camera) {{
-            if (camera.type === 'video') {{
+            if (camera.type === 'video' || camera.type === 'iframe') {{
                 mediaElement.src = camera.url;
             }} else {{
                 // Add cache-busting for images
@@ -393,12 +420,11 @@ def generate_html(
             if (slide.querySelector('.error-screen')) return;
 
             const camera = cameras[currentIndex];
-            const mediaElement = slide.querySelector('img, video');
+            const mediaElement = slide.querySelector('img, video, iframe');
 
-            if (camera.type === 'image' && mediaElement) {{
+            if ((camera.type === 'image' || camera.type === 'iframe') && mediaElement) {{
                 // Reload image with fresh cache-buster
-                const cacheBuster = '?t=' + Date.now();
-                mediaElement.src = camera.url + cacheBuster;
+                loadMedia(currentIndex, mediaElement, camera);
             }} else if (camera.type === 'video' && mediaElement) {{
                 // Ensure video is playing
                 if (mediaElement.paused) {{
