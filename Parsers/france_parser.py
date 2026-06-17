@@ -218,7 +218,7 @@ async def get_parsed_data(
     output_file_gov: str | Path | None = None,
     output_file_asfa: str | Path | None = None,
     output_file_merged: str | Path | None = None,
-    output_folder: str | Path | None = None,
+    output_path: Path | None = None,
 ) -> list[dict[str, Any]]:
     """
     Downloads, parses, and merges French camera data from multiple sources.
@@ -230,7 +230,7 @@ async def get_parsed_data(
         output_file_gov (str | Path | None, optional): File path for saving parsed Gov data.
         output_file_asfa (str | Path | None, optional): File path for saving parsed ASFA data.
         output_file_merged (str | Path | None, optional): File path for saving merged data.
-        output_folder (str | Path | None, optional): Folder to save raw files and defaults.
+        output_path (Path | None, optional): Path to save all parsed files.
 
     Returns:
         list[dict[str, Any]]: The merged list of French highway camera data.
@@ -251,9 +251,9 @@ async def get_parsed_data(
     if output_file_asfa and asfa_cameras:
         save_json(asfa_cameras, output_file_asfa)
 
-    if output_folder:
+    if output_path:
         # If output folder is specified, save all files
-        folder_path = Path(output_folder)
+        folder_path = Path(output_path)
         output_file_gov_name = "cameras_fr_gov.json"
         output_file_asfa_name = "cameras_fr_asfa.json"
         output_file_merged_name = "cameras_fr_merged.json"

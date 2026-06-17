@@ -13,6 +13,9 @@ class SpainParser(BaseParser):
     """
     Parser for Spanish highway cameras (Source: DGT).
     """
+    def __init__(self):
+        super().__init__()
+        self.downloader=SpainDownloader()
 
     @property
     def country(self) -> str:
@@ -64,25 +67,9 @@ class SpainParser(BaseParser):
             return final_output
 
 
-async def get_parsed_data(
-    output_folder: str | Path | None = None, output_file: str | Path | None = None,
-) -> Any:
-    """
-    Wrapper function for SpainParser.get_parsed_data.
-
-    Args:
-        output_file (str | Path | None, optional): Specific file path to save output. Defaults to None.
-        output_folder (str | Path | None, optional): Folder to save output according to country format. Defaults to None.
-
-    Returns:
-        Any: The parsed camera data.
-    """
-    parser = SpainParser(downloader=SpainDownloader())
-    return await parser.get_parsed_data(output_folder=output_folder, output_file=output_file)
 
 
 if __name__ == "__main__":
     output = Path('data')
-    winloop.run(
-        get_parsed_data(output_folder=output)
-    )
+    parser = SpainParser()
+    winloop.run(parser.get_parsed_data(output_path=output))

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from lambert import Lambert93, convertToWGS84Deg
-
 from config import CONSTANTS
 
 EARTH_RADIUS_KM: float = CONSTANTS.COMMON.EARTH_RADIUS_KM
@@ -232,3 +231,6 @@ def get_country(camera_data: list[dict[str, Any]]) -> str:
         str: The country code.
     """
     return camera_data[0]["highway"]["country"]
+
+async def get_raw_parsed_data(parser, output_path:Path|None=None):
+    return await parser.get_parsed_data(output_path)
