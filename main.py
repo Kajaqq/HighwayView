@@ -144,6 +144,12 @@ async def main() -> None:
     if selected_cameras and create_html:
         create_html_files(uk_data, HTML_OUTPUT_DIR, camera_ids=selected_cameras)
 
+    # NETHERLANDS
+    # NL only has ~25 cameras, so we just get them all
+    nl_data = await get_camera_data("NL", save_raw, save_checked, default_dir)
+    if create_html:
+        create_html_files(nl_data, HTML_OUTPUT_DIR)
+
 
 if __name__ == "__main__":
     winloop.run(main())

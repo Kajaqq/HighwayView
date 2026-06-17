@@ -13,7 +13,7 @@ class CONSTANTS:
         HTTP_TIMEOUT = 20.00
         SLIDESHOW_INTERVAL = 7
         EARTH_RADIUS_KM = 6371.0
-        COUNTRY_MAP = {"ES": "Spain", "FR": "France", "IT": "Italy", "UK": "UK"}
+        COUNTRY_MAP = {"ES": "Spain", "FR": "France", "IT": "Italy", "UK": "UK", "NL": "Netherlands"}
         DATA_DIR = PROJECT_ROOT / Path("data/")
         IMG_DIR_NAME = Path("images/")
         IMG_DIR = DATA_DIR / IMG_DIR_NAME
