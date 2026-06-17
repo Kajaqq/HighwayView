@@ -56,6 +56,34 @@ Print a formatted list of all highways and their valid cameras from a generated 
 uv run tools/list_cameras.py data/cameras_it_online.json
 ```
 
+**Serve OBS Browser Sources Locally**
+Serve current generated camera and overlay artifacts through a local aiohttp server:
+
+```bash
+uv run tools/serve_obs.py --country NL
+```
+
+Use these URLs in OBS Browser Source:
+
+```text
+http://127.0.0.1:8765/cameras/NL
+http://127.0.0.1:8765/overlay/ES/
+```
+
+NL camera media is proxied through the local server so HighwayView can attach
+the required provider `Referer` header when fetching the actual camera image.
+
+While running, the server refreshes served camera JSON once per hour and refreshes
+all DATEX / CCISS overlay payloads every five minutes. Restrict DATEX refresh to
+one country if needed:
+
+```bash
+uv run tools/serve_obs.py --alerts ES
+```
+
+Disable camera refresh with `--camera-interval-seconds 0` or disable DATEX refresh
+with `--alerts none`.
+
 ### DatexParser module examples 
 **Generate Traffic Alert Overlays**
 Generate overlay data for all configured DATEX II / CCISS countries once:
@@ -106,7 +134,7 @@ The project is split into three modules and an orchestration script.
 - `Downloaders/`: Contains the scraping module for each country.
 - `Parsers/`: Contains the parsing module for each country.
 - `DatexParser/`: Contains DATEX II XML parsing, Italian CCISS parsing, heuristic filtering, and overlay export code.
-- `tools/`: Contains the tools for checking, and visualizing camera data.
+- `tools/`: Contains the tools for checking, visualizing, and locally serving OBS runtime artifacts.
 - `data/`: Contains the raw and processed camera data plus per-country overlay assets.
 
 ## Documentation
