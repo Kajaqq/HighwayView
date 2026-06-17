@@ -14,14 +14,12 @@ class UKParser(BaseParser):
     Parser for UK highway cameras (Traffic England).
     """
 
+    def __init__(self):
+        super().__init__()
+        self.downloader=UKDownloader()
+
     @property
     def country(self) -> str:
-        """
-        Property that returns the country code.
-
-        Returns:
-            str: The two-letter country code ('UK').
-        """
         return "UK"
 
     async def parse(self, raw_data: str | bytes) -> list[dict[str, Any]]:
@@ -57,24 +55,8 @@ class UKParser(BaseParser):
         return final_output
 
 
-async def get_parsed_data(
-    output_file: str | Path | None = None, output_folder: str | Path | None = None
-) -> Any:
-    """
-    Wrapper function for UKParser.get_parsed_data.
-
-    Args:
-        output_file (str | Path | None, optional): Specific file path to save output. Defaults to None.
-        output_folder (str | Path | None, optional): Folder to save output according to country format. Defaults to None.
-
-    Returns:
-        Any: The parsed camera data.
-    """
-    parser = UKParser(downloader=UKDownloader())
-    return await parser.get_parsed_data(
-        output_file=output_file, output_folder=output_folder
-    )
 
 
 if __name__ == "__main__":
-    winloop.run(get_parsed_data())
+    parser = UKParser()
+    winloop.run(parser.get_parsed_data(output_path=Path("data")))

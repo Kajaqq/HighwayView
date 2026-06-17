@@ -20,6 +20,9 @@ class ItalyParser(BaseParser):
     Handles data from various Italian sources including Autostrade, A22,
     and different A4 sections (ABP, CAV, SATAP).
     """
+    def __init__(self):
+        super().__init__()
+        self.downloader=ItalyDownloader()
 
     @property
     def country(self) -> str:
@@ -350,23 +353,7 @@ class ItalyParser(BaseParser):
         return parsed_data
 
 
-async def get_parsed_data(
-    output_file: str | Path | None = None, output_folder: str | Path | None = None
-) -> Any:
-    """
-    Wrapper function for ItalyParser.get_parsed_data.
-
-    Args:
-        output_file (str | Path | None, optional): Specific file path to save output. Defaults to None.
-        output_folder (str | Path | None, optional): Folder to save output according to country format. Defaults to None.
-
-    Returns:
-        Any: The parsed camera data.
-    """
-    parser = ItalyParser(downloader=ItalyDownloader())
-    return await parser.get_parsed_data(output_file, output_folder)
-
-
 if __name__ == "__main__":
     output = Path(__file__).parent.parent / "data" / "cameras_it.json"
-    winloop.run(get_parsed_data(output))
+    parser = ItalyParser()
+    winloop.run(parser.get_parsed_data(output))

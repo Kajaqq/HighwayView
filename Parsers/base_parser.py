@@ -238,15 +238,13 @@ class BaseParser(ABC):
 
     async def get_parsed_data(
         self,
-        output_file: str | Path | None = None,
-        output_folder: str | Path | None = None,
+        output_path: str | Path | None = None,
     ) -> Any:
         """
         Orchestrates downloading and parsing data.
 
         Args:
-            output_file (str | Path | None, optional): Specific file path to save output. Defaults to None.
-            output_folder (str | Path | None, optional): Folder to save output according to country format. Defaults to None.
+            output_path (str | Path | None, optional): Folder to save output according to country format. Defaults to None.
 
         Returns:
             Any: The parsed camera data.
@@ -261,9 +259,7 @@ class BaseParser(ABC):
         else:
             parsed_data = await asyncio.to_thread(self.parse, raw_data)
 
-        if output_folder:
+        if output_path:
             file_name = f"cameras_{self.country.lower()}.json"
-            save_json(parsed_data, Path(output_folder) / file_name)
-        elif output_file:
-            save_json(parsed_data, output_file)
+            save_json(parsed_data, Path(output_path) / file_name)
         return parsed_data
