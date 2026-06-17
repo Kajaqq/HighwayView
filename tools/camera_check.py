@@ -98,6 +98,10 @@ async def check_camera(
         # Special case for Italy where urls are in the data directly
         url = camera_type
         ext = CONSTANTS.ITALY.VIDEO_EXT
+
+    if camera_type == 'iframe' or source == 'NL':
+        download = False
+
     async with rate_limiter:
         response_bytes = b""
         headers = CONSTANTS.NL.REFERER_HEADER if source == "NL" else None
@@ -182,6 +186,8 @@ async def main(
     """
     # Get camera data from json output
     source, camera_ids = get_camera_data(camera_json)
+    if source == 'NL':
+        download = False
 
     if download:
         has_dir = await asyncio.to_thread(image_dir.exists)
@@ -200,9 +206,8 @@ async def main(
         headers=headers, connector=connector, timeout=timeout
     ) as session:
         tasks = [
-            check_camera(
-                session, source, cam_id, cam_type, rate_limiter, download, image_dir
-            )
+
+            check_camera(session, source, cam_id, cam_type, rate_limiter, download, image_dir)
             for cam_id, cam_type in camera_ids
         ]
         results = await tqdm.gather(*tasks, desc="Checking cameras", unit="cam")
@@ -210,6 +215,7 @@ async def main(
     # Separate successful and failed cameras
     alive_cameras = [res["id"] for res in results if res["status"]]
     errored_cameras = [res["id"] for res in results if not res["status"]]
+
     if download:
         print("Verifying sample images...")
         probably_offline_cams = diff_hash.folder_hash(image_dir)

@@ -135,7 +135,7 @@ def create_url(
         case "NL":
             base_url = CONSTANTS.NL.CAMERA_URL
             ext = CONSTANTS.NL.IMAGE_EXT
-            return f"{base_url}{camera_id}", ext
+            return f"{base_url}{camera_id}/embed", ext
         case _:
             raise ValueError("Invalid data")
 

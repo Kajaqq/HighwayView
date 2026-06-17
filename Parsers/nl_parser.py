@@ -42,7 +42,7 @@ class NLParser(BaseParser):
                 camera_id=camera_id,
                 camera_km_point=0.0,
                 camera_view="*",
-                camera_type="img",
+                camera_type="iframe",
                 coord_x=lon,
                 coord_y=lat,
             )
