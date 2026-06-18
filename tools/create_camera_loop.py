@@ -36,9 +36,9 @@ COUNTRY_SORT_MAP: dict[str, tuple[list[str], list[str], list[str]]] = {
 # ==========================================
 # LOOP CONSTANTS
 # ==========================================
-SEP: str = CONSTANTS.COMMON.SEPARATOR
-DEFAULT_INTERVAL: int = CONSTANTS.COMMON.SLIDESHOW_INTERVAL
-COUNTRY_MAP: dict[str, str] = CONSTANTS.COMMON.COUNTRY_MAP
+SEP = CONSTANTS.COMMON.SEPARATOR
+DEFAULT_INTERVAL = CONSTANTS.COMMON.SLIDESHOW_INTERVAL
+COUNTRY_MAP = CONSTANTS.COMMON.COUNTRY_MAP
 DATA_DIR: Path = CONSTANTS.COMMON.DATA_DIR
 
 # A ~10 minute(~90 cameras) loop of the most important highways of the country
@@ -50,9 +50,7 @@ HIGHWAY_SEQUENCES: dict[str, list[tuple[str, int]]] = {
 }
 
 
-def get_ring_cameras_angle(
-    cameras: list[dict[str, Any]],
-) -> Callable[[dict[str, Any]], float]:
+def get_ring_cameras_angle(cameras: list[dict[str, Any]]) -> Callable[[dict[str, Any]], float]:
     """
     Creates a sorting key function to sort cameras clockwise around their geographic center safely.
 
@@ -108,9 +106,7 @@ def get_sort_order(country_code: str = "UK") -> tuple[list[str], list[str], list
     return COUNTRY_SORT_MAP.get(country_code.upper(), ([], [], []))
 
 
-def sort_cameras(
-    cameras: list[dict[str, Any]], highway: str, country: str
-) -> list[dict[str, Any]]:
+def sort_cameras(cameras: list[dict[str, Any]], highway: str, country: str) -> list[dict[str, Any]]:
     """
     Sorts a list of cameras based on their highway directionality (NS, EW, or Ring).
 
@@ -161,9 +157,7 @@ def sort_cameras(
         return cameras
 
 
-def sample_cameras(
-    cameras: list[dict[str, Any]], target_count: int, highway_name: str
-) -> list[dict[str, Any]]:
+def sample_cameras(cameras: list[dict[str, Any]], target_count: int, highway_name: str) -> list[dict[str, Any]]:
     """
     Evenly samples a target number of cameras from the provided list.
 
@@ -191,9 +185,7 @@ def sample_cameras(
     return [cameras[int(i * step)] for i in range(target_count)]
 
 
-def process_highway_sequence(
-    cameras: list[dict[str, Any]], sequence_list: list[tuple[str, int]], country: str
-) -> list[dict[str, Any]]:
+def process_highway_sequence(cameras: list[dict[str, Any]], sequence_list: list[tuple[str, int]],country: str) -> list[dict[str, Any]]:
     """
     Processes the specified sequence of highways to collect and sort cameras.
 
@@ -278,10 +270,7 @@ def process_highway_sequence(
     return final_playlist
 
 
-def main(
-    data: str | Path | list[dict[str, Any]],
-    loop_data: list[tuple[str, int]] | None = None,
-) -> list[str]:
+def main(data: str | Path | list[dict[str, Any]],loop_data: list[tuple[str, int]] | None = None) -> list[str]:
     """
     Constructs a looped list of cameras based on configured priorities.
 

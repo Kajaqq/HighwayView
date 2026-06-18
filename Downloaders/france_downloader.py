@@ -70,9 +70,7 @@ class FranceDownloader(BaseDownloader):
             return None
         return await self.download(url=gov_camera_url, session=session)
 
-    async def get_data(
-        self, asfa_only: bool = False, gov_only: bool = False
-    ) -> tuple[str | None, str | None]:
+    async def get_data(self, asfa_only: bool = False, gov_only: bool = False) -> tuple[str | None, str | None]:
         """
         Orchestrates downloading data from ASFA, Government, or both sources.
 

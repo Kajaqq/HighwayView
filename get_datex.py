@@ -1,8 +1,9 @@
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from asyncio import gather
 from pathlib import Path
 
 import winloop
+
 from config import CONSTANTS
 from DatexParser.cciss_parser import CcissParser
 from DatexParser.datex_filter import FilterConfig
@@ -53,8 +54,7 @@ COUNTRY_CONFIGS: dict[str, dict] = {
 }
 
 
-def parse_args() -> Namespace:
-
+def parse_args():
     parser = ArgumentParser(
         description="Export DATEX traffic alerts to overlay_data.json for OBS Browser Source."
     )
@@ -93,17 +93,11 @@ def parse_args() -> Namespace:
     )
     return parser.parse_args()
 
-
-def _parse_roads(raw_roads: str) -> list[str]:
-    return [road.strip() for road in raw_roads.split(",") if road.strip()]
-
-
 def _build_parser(country: str) -> CcissParser | DatexParser:
     if country == "IT":
         return CcissParser(downloader=GenericDownloader())
     kwargs = COUNTRY_CONFIGS[country]["parser_kwargs"]
     return DatexParser(downloader=GenericDownloader(), **kwargs)
-
 
 def _get_output_file(country: str) -> Path:
     return (
@@ -111,7 +105,6 @@ def _get_output_file(country: str) -> Path:
         / COUNTRY_CONFIGS[country]["output_dir"]
         / "overlay_data.json"
     )
-
 
 async def _run_country_once(
     country: str,
@@ -130,7 +123,6 @@ async def _run_country_once(
         skip_filter=skip_filter,
     )
     print(f"[{country}] Overlay data written to: {target}")
-
 
 async def _run_country_loop(
     country: str,
@@ -152,10 +144,9 @@ async def _run_country_loop(
         country_code=country,
     )
 
-
 async def main() -> None:
     args = parse_args()
-    roads = (_parse_roads(args.roads) or None) if args.roads is not None else None
+    roads = [road.strip() for road in args.roads.split(",") if road.strip()] if args.roads is not None else None
     countries = list(COUNTRY_CONFIGS) if args.country == "all" else [args.country]
 
     if args.once:

@@ -146,7 +146,7 @@ class FranceParser(BaseParser):
 
     def parse_asfa_cameras(self, asfa_baguettes: str) -> list[dict[str, Any]]:
         """
-        Parses raw Javascript array data from ASFA (Autoroutes.fr).
+        Parses raw JavaScript array data from ASFA (Autoroutes.fr).
 
         Args:
             asfa_baguettes (str): The raw JavaScript code snippet containing camera data.
@@ -188,8 +188,9 @@ class FranceParser(BaseParser):
         return self.format_highway_output(grouped_highways)
 
     async def parse(
-        self, raw_data: tuple[str, str | bytes]
-    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+            self,
+            raw_data: tuple[str, str | bytes],
+            ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Parses both ASFA and Government raw datasets and merges them.
 

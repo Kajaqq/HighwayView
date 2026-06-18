@@ -10,17 +10,16 @@ from PIL import Image
 
 from config import CONSTANTS
 
-SEP: str = CONSTANTS.COMMON.SEPARATOR
-IMAGE_EXTENSIONS: tuple = CONSTANTS.COMMON.IMAGE_EXTENSIONS
-VIDEO_EXTENSIONS: tuple = CONSTANTS.COMMON.VIDEO_EXTENSIONS
+SEP = CONSTANTS.COMMON.SEPARATOR
+IMAGE_EXTENSIONS = CONSTANTS.COMMON.IMAGE_EXTENSIONS
+VIDEO_EXTENSIONS = CONSTANTS.COMMON.VIDEO_EXTENSIONS
 
 
 class Camera(NamedTuple):
     bits: int
     id: str
 
-
-def get_video_frame(video_file: Path) -> None:
+def get_video_frame(video_file: Path):
     """
     Extracts the first frame of a video file and saves it as a PNG, then deletes the video.
 
@@ -29,15 +28,15 @@ def get_video_frame(video_file: Path) -> None:
     """
     output_path = video_file.with_suffix(".png")
     input_file = ffmpeg.input(str(video_file), ss="00:00:00")
-    # scale all images to the same size
+    # Scale all images to the same size
     ffmpeg.output(
         input_file, filename=str(output_path), vframes=1, vf="scale=352:288"
     ).run(overwrite_output=True, quiet=True)
-    # remove the video
+    # Remove the video
     video_file.unlink()
 
 
-def get_image_hash(img_file: Path | str) -> Camera | None:
+def get_image_hash(img_file) -> Camera | None:
     """
     Opens an image and returns its dhash bit integer wrapped in a Camera namedtuple.
 
@@ -151,7 +150,7 @@ def main(file_path: Path | None = None) -> set[str] | None:
     return duplicate_ids
 
 
-def cleanup_folder(folder_path: Path) -> None:
+def cleanup_folder(folder_path: Path):
     """
     Deletes all files in a folder.
 

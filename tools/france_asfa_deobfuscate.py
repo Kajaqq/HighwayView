@@ -6,13 +6,13 @@ import winloop
 from config import CONSTANTS
 from Downloaders.base_downloader import GenericDownloader
 
-BASE_URL: str = CONSTANTS.FRANCE.ASFA.BASE_URL
-AUTH_URL: str = CONSTANTS.FRANCE.ASFA.AUTH_URL
-HTTPS_PREFIX: str = CONSTANTS.COMMON.HTTPS_PREFIX
-CAMERA_SUFFIX: str = CONSTANTS.FRANCE.ASFA.CAMERA_SUFFIX
+BASE_URL = CONSTANTS.FRANCE.ASFA.BASE_URL
+AUTH_URL = CONSTANTS.FRANCE.ASFA.AUTH_URL
+HTTPS_PREFIX = CONSTANTS.COMMON.HTTPS_PREFIX
+CAMERA_SUFFIX = CONSTANTS.FRANCE.ASFA.CAMERA_SUFFIX
 
 
-async def get_auth_key(session: aiohttp.ClientSession, url: str) -> str | None:
+async def get_auth_key(session, url) -> str | None:
     """
     Fetches the authorization key from the initial ASFA authentication endpoint.
 
@@ -38,12 +38,7 @@ async def get_auth_key(session: aiohttp.ClientSession, url: str) -> str | None:
     return key
 
 
-async def get_phase2(
-    session: aiohttp.ClientSession,
-    key: str,
-    downloader: GenericDownloader,
-    url: str = AUTH_URL,
-) -> str:
+async def get_phase2(session, key, downloader: GenericDownloader, url=AUTH_URL) -> str:
     """
     Constructs the Phase 2 URL via the authentication key.
 
@@ -67,27 +62,7 @@ async def get_phase2(
     return phase2_url
 
 
-async def parse_phase2(
-    session: aiohttp.ClientSession, phase2_url: str, downloader: GenericDownloader
-) -> list[str]:
-    """
-    Downloads and splits the Phase 2 JavaScript.
-
-    Args:
-        session (aiohttp.ClientSession): The active client session.
-        phase2_url (str): The Phase 2 URL.
-        downloader (GenericDownloader): The downloader utility.
-
-    Returns:
-        list[str]: The javascript payload separated by semicolons.
-    """
-    p2: str = await downloader.download(url=phase2_url, session=session)
-    return p2.split(";")
-
-
-def resolve_js_variables(
-    lines: list[str], target_domain: str = "www.autoroutes.fr"
-) -> dict[str, str]:
+def resolve_js_variables(lines: list[str], target_domain="www.autoroutes.fr") -> dict[str, str]:
     """
     Resolves obfuscated variables mimicking a JavaScript execution flow.
 
@@ -137,12 +112,12 @@ def resolve_js_variables(
     return var_map
 
 
-def assemble_url(phase2_list: list[str], var_values: dict[str, str]) -> str:
+def assemble_url(phase2_vars: list[str], var_values: dict[str, str]) -> str:
     """
     Assembles the final dataset URL using the resolved components.
 
     Args:
-        phase2_list (list[str]): The phase 2 javascript instructions.
+        phase2_vars (list[str]): The phase 2 js instructions.
         var_values (dict[str, str]): The resolved variables from `resolve_js_variables`.
 
     Raises:
@@ -152,7 +127,7 @@ def assemble_url(phase2_list: list[str], var_values: dict[str, str]) -> str:
         str: The fully assembled URL.
     """
     descriptor_line = next(
-        (x for x in phase2_list if "var SAWT3_WebcamDescriptorsLocation =" in x), None
+        (x for x in phase2_vars if "var SAWT3_WebcamDescriptorsLocation =" in x), None
     )
 
     if descriptor_line:
@@ -168,10 +143,9 @@ def assemble_url(phase2_list: list[str], var_values: dict[str, str]) -> str:
     return full_url
 
 
-# noinspection PyShadowingNames
 async def get_complete_url() -> str:
     """
-    Drives the complete multi-phase process to deobfuscate and retrieve the full ASFA data URL.
+    Orchestrates the complete process to deobfuscate and retrieve the full ASFA data URL.
 
     Returns:
         str: Expected data URL.
@@ -185,9 +159,10 @@ async def get_complete_url() -> str:
         if not auth_key:
             raise ValueError("Failed to get auth key.")
         phase_2_url = await get_phase2(session, auth_key, downloader)
-        phase_2_list = await parse_phase2(session, phase_2_url, downloader)
-        resolved_vars = resolve_js_variables(phase_2_list)
-        full_url = assemble_url(phase_2_list, resolved_vars)
+        phase_2_list = await downloader.download(url=phase_2_url, session=session)
+        phase_2_vars = phase_2_list.split(";")
+        resolved_vars = resolve_js_variables(phase_2_vars)
+        full_url = assemble_url(phase_2_vars, resolved_vars)
     return full_url
 
 

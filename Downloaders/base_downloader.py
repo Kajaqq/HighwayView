@@ -14,6 +14,9 @@ class HTTPError(Exception):
 
 
 class BaseDownloader(ABC):
+    timeout = CONSTANTS.COMMON.HTTP_TIMEOUT
+    rate_limit = CONSTANTS.COMMON.RATE_LIMIT
+
     """
     Abstract base class for all data downloaders.
 
@@ -21,36 +24,29 @@ class BaseDownloader(ABC):
     timeout, rate limiting, and error handling configurations.
     """
 
-    def __init__(
-        self,
-        timeout_int: float = CONSTANTS.COMMON.HTTP_TIMEOUT,
-        rate_limit: int = CONSTANTS.COMMON.RATE_LIMIT,
-    ) -> None:
+    def __init__(self, timeout=timeout, rate_limit=rate_limit):
         """
         Initializes the Downloader.
 
         Args:
-            timeout_int (float, optional): The HTTP request timeout in seconds.
+            timeout (float, optional): The HTTP request timeout in seconds.
                 Defaults to CONSTANTS.COMMON.HTTP_TIMEOUT -> 20s.
             rate_limit (int, optional): The maximum number of concurrent connections.
                 Defaults to CONSTANTS.COMMON.RATE_LIMIT -> 50 requests.
         """
-        self.timeout_int = timeout_int
+        self.timeout = timeout
         self.rate_limit = rate_limit
 
-    def _get_http_settings(
-        self,
-    ) -> tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
+    def _get_http_settings(self) -> tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
         """
         Generates the standard HTTP settings for a session.
 
         Returns:
-            tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
-                A tuple containing the headers, timeout context, and TCP connector.
+           A tuple containing the headers, timeout context, and TCP connector.
         """
 
         headers: dict[str, str] = CONSTANTS.COMMON.DEFAULT_HEADERS.copy()
-        timeout = aiohttp.ClientTimeout(total=self.timeout_int)
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
 
         # This shouldn't be required, but for some reason it is
         resolver = aiohttp.AsyncResolver(nameservers=["8.8.8.8", "1.1.1.1"])
@@ -80,7 +76,9 @@ class BaseDownloader(ABC):
 
     @staticmethod
     async def _async_request(
-        session: aiohttp.ClientSession, method: str, url: str, return_type: str = "text"
+        session: aiohttp.ClientSession,
+        method: str, url: str,
+        return_type: str = "text"
     ) -> tuple[bytes, int] | str:
         """
         Executes an asynchronous HTTP request.
@@ -138,21 +136,16 @@ class BaseDownloader(ABC):
         except aiohttp.ClientError as e:
             raise HTTPError(self._format_error_message(method, url, e)) from e
 
-    async def get_settings(
-        self,
-    ) -> tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
+    async def get_settings(self) -> tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
         """
         Public method to get standard HTTP settings.
 
         Returns:
-            tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
-                The headers, timeout context, and TCP connector.
+            A tuple containing the headers, timeout context, and TCP connector.
         """
         return self._get_http_settings()
 
-    async def download(
-        self, url: str, session: aiohttp.ClientSession | None = None
-    ) -> str:
+    async def download(self, url: str, session: aiohttp.ClientSession | None = None) -> str:
         """
         Public method to download content from a URL via a GET request.
 

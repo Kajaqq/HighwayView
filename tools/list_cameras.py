@@ -1,17 +1,16 @@
 import sys
 from pathlib import Path
-from typing import Any
 
 from natsort import natsorted
 
 from config import CONSTANTS
 from tools.utils import load_json
 
-COUNTRY_MAP: dict[str, str] = CONSTANTS.COMMON.COUNTRY_MAP
-SEPARATOR: str = CONSTANTS.COMMON.SEPARATOR
+COUNTRY_MAP = CONSTANTS.COMMON.COUNTRY_MAP
+SEP = CONSTANTS.COMMON.SEPARATOR
 
 
-def parse_highways(json_data: list[dict[str, Any]]) -> list[tuple[str, int]]:
+def parse_highways(json_data):
     """
     Counts highway cameras from JSON data.
 
@@ -33,7 +32,7 @@ def parse_highways(json_data: list[dict[str, Any]]) -> list[tuple[str, int]]:
     return highway_data
 
 
-def main(highway_data: list[tuple[str, int]]) -> None:
+def main(highway_data):
     """
     Prints a formatted list of highways with their respective camera counts.
 
@@ -41,14 +40,14 @@ def main(highway_data: list[tuple[str, int]]) -> None:
         highway_data (list[tuple[str, int]]): The list of highway counts.
     """
     print("\nHighways and camera counts:")
-    print(SEPARATOR)
+    print(SEP)
 
     total_cameras = 0
     for highway_name, camera_count in highway_data:
         total_cameras += camera_count
         print(f"{highway_name:15} {camera_count:4} cameras")
 
-    print(SEPARATOR)
+    print(SEP)
     print(f"{'Total':15} {total_cameras:4} cameras")
 
 

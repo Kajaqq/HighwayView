@@ -236,10 +236,7 @@ class BaseParser(ABC):
             for name, cams in sorted(merged.items())
         ]
 
-    async def get_parsed_data(
-        self,
-        output_path: str | Path | None = None,
-    ) -> Any:
+    async def get_parsed_data(self, output_path: str | Path | None = None) -> Any:
         """
         Orchestrates downloading and parsing data.
 

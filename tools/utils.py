@@ -8,21 +8,11 @@ from typing import Any
 from lambert import Lambert93, convertToWGS84Deg
 from config import CONSTANTS
 
-EARTH_RADIUS_KM: float = CONSTANTS.COMMON.EARTH_RADIUS_KM
-DEFAULT_HEADERS: dict[str, str] = CONSTANTS.COMMON.DEFAULT_HEADERS
+EARTH_RADIUS_KM = CONSTANTS.COMMON.EARTH_RADIUS_KM
+DEFAULT_HEADERS = CONSTANTS.COMMON.DEFAULT_HEADERS
 
 
-def check_parent_dir(path: Path) -> None:
-    """
-    Ensures that the parent directory of a given path exists.
-
-    Args:
-        path (Path): The file path.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-
-def check_json(json_data: Any, indent: int | None) -> str:
+def check_json(json_data, indent: int | None) -> str:
     """
     Validates and formats JSON data to a string.
 
@@ -44,7 +34,7 @@ def check_json(json_data: Any, indent: int | None) -> str:
         raise ValueError(f"Data is not serializable to JSON: {e}") from e
 
 
-def save_json(json_data: Any, output: Path | str) -> None:
+def save_json(json_data, output: Path | str) -> None:
     """
     Synchronously saves JSON data to a file with proper error handling.
 
@@ -56,7 +46,7 @@ def save_json(json_data: Any, output: Path | str) -> None:
         OSError: If the file cannot be written.
     """
     output_path = Path(output)
-    check_parent_dir(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         content: str = check_json(json_data, indent=4)
         output_path.write_text(content, encoding="utf-8")
@@ -64,7 +54,7 @@ def save_json(json_data: Any, output: Path | str) -> None:
         raise OSError(f"Failed to write file {output_path}: {e}") from e
 
 
-def load_json(json_data: Path | str | bytes | list[Any] | dict[str, Any]) -> Any:
+def load_json(json_data: Path | str | bytes | list[Any] | dict[str, Any]):
     """
     Loads JSON data from a file, raw string, or passes it through if already dict/list.
 
@@ -92,9 +82,7 @@ def load_json(json_data: Path | str | bytes | list[Any] | dict[str, Any]) -> Any
         raise ValueError(f"Invalid JSON data: {e}") from e
 
 
-def create_url(
-    base: str, camera_id: str | int, camera_type: str
-) -> tuple[str, str | None]:
+def create_url(base: str, camera_id: str | int, camera_type: str) -> tuple[str, str | None]:
     """
     Constructs the direct camera URL based on the country, ID, and type.
 
@@ -109,21 +97,16 @@ def create_url(
     Returns:
         tuple[str, str | None]: A tuple consisting of the full URL and the file extension.
     """
+
     match base:
         case "FR":
-            match camera_type:
-                case "asfa_vid":
-                    base_url: str = CONSTANTS.FRANCE.ASFA.CAMERA_URL
-                    ext: str = CONSTANTS.FRANCE.ASFA.VIDEO_EXT
-                    return base_url.format(camera_id=camera_id), ext
-                case _:
-                    base_url = CONSTANTS.FRANCE.CAMERA_URL
-                    ext_dict = {
-                        "vid": CONSTANTS.FRANCE.VIDEO_EXT,
-                        "img": CONSTANTS.FRANCE.IMAGE_EXT,
-                    }
-                    ext2 = ext_dict.get(camera_type)
-                    return f"{base_url}{camera_id}{ext2}", ext2
+            url_ext_dict = {
+                "asfa_vid": (CONSTANTS.FRANCE.ASFA.CAMERA_URL, CONSTANTS.FRANCE.ASFA.VIDEO_EXT),
+                "vid": (CONSTANTS.FRANCE.CAMERA_URL, CONSTANTS.FRANCE.VIDEO_EXT),
+                "img": (CONSTANTS.FRANCE.CAMERA_URL, CONSTANTS.FRANCE.IMAGE_EXT)
+            }
+            base_url, ext = url_ext_dict.get(camera_type)
+            return base_url.format(camera_id=camera_id), ext
         case "ES":
             base_url = CONSTANTS.SPAIN.CAMERA_URL
             ext = CONSTANTS.SPAIN.IMAGE_EXT
@@ -133,18 +116,20 @@ def create_url(
             ext = CONSTANTS.UK.IMAGE_EXT
             return f"{base_url}{camera_id}{ext}", ext
         case "NL":
-            base_url = CONSTANTS.NL.CAMERA_URL
-            ext = CONSTANTS.NL.IMAGE_EXT
-            return f"{base_url}{camera_id}/embed", ext
+            url_ext_dict = {
+                'img': (CONSTANTS.NL.CAMERA_URL, CONSTANTS.NL.IMAGE_EXT),
+                'iframe': (CONSTANTS.NL.CAMERA_URL, CONSTANTS.NL.IFRAME_EXT)
+            }
+            base_url, ext = url_ext_dict.get(camera_type)
+            return f"{base_url}{camera_id}{ext}", ext
         case _:
             raise ValueError("Invalid data")
 
 
-def unix_to_datetime(
-    timestamp: int | float | str, tz: datetime.tzinfo = CONSTANTS.FRANCE.PARIS_TZ
-) -> str:
+def unix_to_datetime(timestamp: int | float | str, tz=CONSTANTS.FRANCE.PARIS_TZ) -> str:
     """
     Converts a Unix timestamp to a formatted datetime string with timezone normalization.
+    Used mainly for France cameras.
 
     Args:
         timestamp (int | float | str): The Unix timestamp, in seconds or milliseconds.
@@ -156,7 +141,7 @@ def unix_to_datetime(
     timestamp_len = len(str(timestamp))
     if timestamp_len > 10:
         zeros_to_remove = timestamp_len - 10
-        divisor = 10**zeros_to_remove
+        divisor = 10 ** zeros_to_remove
         normalized_timestamp = float(timestamp) / divisor
     else:
         normalized_timestamp = float(timestamp)
@@ -213,8 +198,8 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     d_phi = phi2 - phi1
     d_lambda = math.radians(lon2 - lon1)
     a = (
-        math.sin(d_phi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+            math.sin(d_phi / 2) ** 2
+            + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
     )
     # Clamp value to 1.0 to handle floating-point errors (prevents ValueError in asin)
     return 2 * r * math.asin(min(1.0, math.sqrt(a)))
@@ -223,14 +208,20 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def get_country(camera_data: list[dict[str, Any]]) -> str:
     """
     Extracts the country identifier from the parsed camera data structure.
-
-    Args:
-        camera_data (list[dict[str, Any]]): The parsed camera list grouped by highway.
-
-    Returns:
-        str: The country code.
     """
     return camera_data[0]["highway"]["country"]
 
-async def get_raw_parsed_data(parser, output_path:Path|None=None):
+
+async def get_raw_parsed_data(parser, output_path: Path | None = None):
+    """
+    Wrapper for parser.get_parsed_data
+
+    Args:
+        parser: BaseParser object
+        output_path: Path to the output file
+
+    Returns:
+        Parsed camera data
+
+    """
     return await parser.get_parsed_data(output_path)

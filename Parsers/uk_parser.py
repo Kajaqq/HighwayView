@@ -56,7 +56,6 @@ class UKParser(BaseParser):
 
 
 
-
 if __name__ == "__main__":
     parser = UKParser()
     winloop.run(parser.get_parsed_data(output_path=Path("data")))

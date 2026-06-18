@@ -11,15 +11,13 @@ from config import CONSTANTS
 from Downloaders.base_downloader import GenericDownloader, HTTPError
 from tools.utils import create_url, get_country, load_json, save_json
 
-SEP: str = CONSTANTS.COMMON.SEPARATOR
-DEFAULT_RATE_LIMIT: int = CONSTANTS.COMMON.RATE_LIMIT
+SEP = CONSTANTS.COMMON.SEPARATOR
+DEFAULT_RATE_LIMIT = CONSTANTS.COMMON.RATE_LIMIT
 JSON_OUTPUT_DIR: Path = CONSTANTS.COMMON.DATA_DIR
 IMAGE_DIR: Path = CONSTANTS.COMMON.IMG_DIR
 
 
-async def save_image(
-    camera_id: str | int, ext: str, img_bytes: bytes, output_dir: Path = IMAGE_DIR
-) -> None:
+async def save_image(camera_id: str | int, ext: str, img_bytes: bytes, output_dir: Path = IMAGE_DIR) -> None:
     """
     Helper function to save an image to disk.
 
@@ -122,9 +120,7 @@ async def check_camera(
             return {"id": camera_id, "status": False, "len": len(response_bytes)}
 
 
-def remove_offline_cameras(
-    camera_json: list[dict[str, Any]], errored_cameras: list[str | int]
-) -> list[dict[str, Any]]:
+def remove_offline_cameras(camera_json: list[dict[str, Any]], errored_cameras: list[str | int]) -> list[dict[str, Any]]:
     """
     Removes offline cameras from the JSON dataset.
 
@@ -196,9 +192,7 @@ async def main(
 
     # Set up aiohttp client
     rate_limiter = asyncio.Semaphore(rate_limit)
-    downloader = GenericDownloader(
-        timeout_int=CONSTANTS.COMMON.HTTP_TIMEOUT, rate_limit=rate_limit
-    )
+    downloader = GenericDownloader(rate_limit=rate_limit)
     headers, timeout, connector = await downloader.get_settings()
 
     # Run the checks
