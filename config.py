@@ -13,11 +13,17 @@ class CONSTANTS:
         HTTP_TIMEOUT = 20.00
         SLIDESHOW_INTERVAL = 7
         EARTH_RADIUS_KM = 6371.0
-        COUNTRY_MAP = {"ES": "Spain", "FR": "France", "IT": "Italy", "UK": "UK", "NL": "Netherlands"}
+        COUNTRY_MAP = {
+            "ES": "Spain",
+            "FR": "France",
+            "IT": "Italy",
+            "UK": "UK",
+            "NL": "Netherlands",
+        }
         DATA_DIR = PROJECT_ROOT / Path("data/")
         IMG_DIR_NAME = Path("images/")
         IMG_DIR = DATA_DIR / IMG_DIR_NAME
-        HTML_DIR = DATA_DIR / Path('html/')
+        HTML_DIR = DATA_DIR / Path("html/")
         DEFAULT_HEADERS = {
             "accept": "*/*",
             "content-type": "application/json",
@@ -489,9 +495,12 @@ class CONSTANTS:
 
     class NL:
         BASE_URL = "https://api.rwsverkeersinfo.nl/api/"
-        REFERER_URL= 'https://www.rwsverkeersinfo.nl/'
-        REFERER_HEADER = {'Referer': REFERER_URL}
-        CAMERA_API =  BASE_URL + "cameras/"
-        CAMERA_URL =  "https://stream.inmoves.nl/"
+        REFERER_URL = "https://www.rwsverkeersinfo.nl/"
+        REFERER_HEADER = {"Referer": REFERER_URL}
+        CAMERA_API = BASE_URL + "cameras/"
+        CAMERA_URL = "https://stream.inmoves.nl/"
         IMAGE_EXT = ".jpg"
-        IFRAME_EXT = '/embed'
+        IFRAME_EXT = "/embed"
+        DATEX_URL = "https://opendata.ndw.nu/actueel_beeld.xml.gz"
+        DATEX_OVERLAY_DIR = "overlay_netherlands"
+        DATEX_ROADS = []

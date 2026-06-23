@@ -31,12 +31,22 @@ class LocationPoint(BaseModel):
         latitude: WGS-84 latitude.
         longitude: WGS-84 longitude.
         km_point: Kilometer-point marker on the road, if available.
-        reference_marker: French PR marker identifier, if available.
+        reference_marker: Provider reference marker, such as a French PR marker
+            or Dutch VILD ``LOC_NR``.
         offset_m: Offset in meters from the French PR marker or Alert-C
             reference, if available.
         alertc_location_id: Alert-C/TMC location identifier, if available.
         alertc_location_name: Human-readable Alert-C location name, if
             available.
+        alertc_road_number: VILD road number for the Alert-C location.
+        alertc_road_name: VILD road name for the Alert-C location.
+        alertc_road_label: Combined VILD road number/name.
+        alertc_first_name: VILD primary location name.
+        alertc_second_name: VILD secondary location name.
+        alertc_place_name: Combined VILD place/location name.
+        alertc_area_name: Nearby VILD administrative area name.
+        alertc_location_type: VILD location type code.
+        alertc_location_description: Human-readable VILD location type.
         community: Spanish Autonomous Community (e.g. ``Andalucía``).
         province: Province name (e.g. ``Sevilla``).
         municipality: Municipality name.
@@ -51,6 +61,21 @@ class LocationPoint(BaseModel):
     offset_m: float | None = None
     alertc_location_id: str | None = None
     alertc_location_name: str | None = None
+    alertc_road_number: str | None = None
+    alertc_road_name: str | None = None
+    alertc_road_label: str | None = None
+    alertc_first_name: str | None = None
+    alertc_second_name: str | None = None
+    alertc_place_name: str | None = None
+    alertc_area_name: str | None = None
+    alertc_location_type: str | None = None
+    alertc_location_description: str | None = None
+    alertc_area_ref: int | None = None
+    alertc_line_ref: int | None = None
+    km_start_pos: float | None = None
+    km_end_pos: float | None = None
+    km_start_neg: float | None = None
+    km_end_neg: float | None = None
     community: str | None = None
     province: str | None = None
     municipality: str | None = None

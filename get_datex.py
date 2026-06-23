@@ -51,6 +51,22 @@ COUNTRY_CONFIGS: dict[str, dict] = {
         ),
         "parser_kwargs": {},
     },
+    "NL": {
+        "roads": CONSTANTS.NL.DATEX_ROADS,
+        "output_dir": CONSTANTS.NL.DATEX_OVERLAY_DIR,
+        "filter_config": FilterConfig(
+            transient_ttl_days=2,
+            roadworks_ttl_days=1800,
+            infrastructure_ttl_days=1095,
+            low_severity_ttl_days=2,
+            highest_road_closed_bonus=365,
+            suspicious_threshold=0.75,
+        ),
+        "parser_kwargs": {
+            "datex_url": CONSTANTS.NL.DATEX_URL,
+            "country_code": "NL",
+        },
+    },
 }
 
 
@@ -60,7 +76,7 @@ def parse_args():
     )
     parser.add_argument(
         "--country",
-        choices=["ES", "FR", "IT", "all"],
+        choices=["ES", "FR", "IT", "NL", "all"],
         default="all",
         help="Which country to process (default: all).",
     )
@@ -93,11 +109,13 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 def _build_parser(country: str) -> CcissParser | DatexParser:
     if country == "IT":
         return CcissParser(downloader=GenericDownloader())
     kwargs = COUNTRY_CONFIGS[country]["parser_kwargs"]
     return DatexParser(downloader=GenericDownloader(), **kwargs)
+
 
 def _get_output_file(country: str) -> Path:
     return (
@@ -105,6 +123,7 @@ def _get_output_file(country: str) -> Path:
         / COUNTRY_CONFIGS[country]["output_dir"]
         / "overlay_data.json"
     )
+
 
 async def _run_country_once(
     country: str,
@@ -123,6 +142,7 @@ async def _run_country_once(
         skip_filter=skip_filter,
     )
     print(f"[{country}] Overlay data written to: {target}")
+
 
 async def _run_country_loop(
     country: str,
@@ -144,9 +164,14 @@ async def _run_country_loop(
         country_code=country,
     )
 
+
 async def main() -> None:
     args = parse_args()
-    roads = [road.strip() for road in args.roads.split(",") if road.strip()] if args.roads is not None else None
+    roads = (
+        [road.strip() for road in args.roads.split(",") if road.strip()]
+        if args.roads is not None
+        else None
+    )
     countries = list(COUNTRY_CONFIGS) if args.country == "all" else [args.country]
 
     if args.once:

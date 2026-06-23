@@ -76,9 +76,7 @@ class BaseDownloader(ABC):
 
     @staticmethod
     async def _async_request(
-        session: aiohttp.ClientSession,
-        method: str, url: str,
-        return_type: str = "text"
+        session: aiohttp.ClientSession, method: str, url: str, return_type: str = "text"
     ) -> tuple[bytes, int] | str:
         """
         Executes an asynchronous HTTP request.
@@ -136,7 +134,36 @@ class BaseDownloader(ABC):
         except aiohttp.ClientError as e:
             raise HTTPError(self._format_error_message(method, url, e)) from e
 
-    async def get_settings(self) -> tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
+    async def _fetch_bytes_response(
+        self,
+        url: str,
+        method: str,
+        session: aiohttp.ClientSession | None,
+    ) -> bytes:
+        try:
+            if session is None:
+                headers, timeout_ctx, connector = self._get_http_settings()
+                async with aiohttp.ClientSession(
+                    headers=headers, timeout=timeout_ctx, connector=connector
+                ) as new_session:
+                    response = await self._async_request(
+                        new_session, method, url, return_type="bytes"
+                    )
+            else:
+                response = await self._async_request(
+                    session, method, url, return_type="bytes"
+                )
+        except aiohttp.ClientError as e:
+            raise HTTPError(self._format_error_message(method, url, e)) from e
+
+        if isinstance(response, str):
+            raise HTTPError(f"Expected bytes response for {url}")
+        content, _status = response
+        return content
+
+    async def get_settings(
+        self,
+    ) -> tuple[dict[str, str], aiohttp.ClientTimeout, aiohttp.TCPConnector]:
         """
         Public method to get standard HTTP settings.
 
@@ -145,7 +172,9 @@ class BaseDownloader(ABC):
         """
         return self._get_http_settings()
 
-    async def download(self, url: str, session: aiohttp.ClientSession | None = None) -> str:
+    async def download(
+        self, url: str, session: aiohttp.ClientSession | None = None
+    ) -> str:
         """
         Public method to download content from a URL via a GET request.
 
@@ -157,6 +186,11 @@ class BaseDownloader(ABC):
             str: The downloaded content as a string.
         """
         return await self._fetch_response(url, "GET", session)
+
+    async def download_bytes(
+        self, url: str, session: aiohttp.ClientSession | None = None
+    ) -> bytes:
+        return await self._fetch_bytes_response(url, "GET", session)
 
     async def download_post(
         self, url: str, session: aiohttp.ClientSession | None = None
