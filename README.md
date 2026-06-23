@@ -71,18 +71,7 @@ http://127.0.0.1:8765/overlay/ES/
 ```
 
 NL camera media is proxied through the local server so HighwayView can attach
-the required provider `Referer` header when fetching the actual camera image.
-
-While running, the server refreshes served camera JSON once per hour and refreshes
-all DATEX / CCISS overlay payloads every five minutes. Restrict DATEX refresh to
-one country if needed:
-
-```bash
-uv run tools/serve_obs.py --alerts ES
-```
-
-Disable camera refresh with `--camera-interval-seconds 0` or disable DATEX refresh
-with `--alerts none`.
+the required provider `Referer` header when fetching the actual camera feed.
 
 ### DatexParser module examples 
 **Generate Traffic Alert Overlays**
