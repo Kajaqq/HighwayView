@@ -15,7 +15,7 @@ and DATEX II / CCISS traffic alert overlays for OBS Browser Source.
 - **Slideshow Generation** (`create_html.py`): Create optimized HTML slideshows from the camera data. Features lazy loading, memory management, and error handling, making it ideal for streaming software like OBS.
 - **Curated Camera Loops** (`create_camera_loop.py`): Automatically generate ~10-minute curated cycles of the most important national highways for each supported country.
 - **Data Inspection** (`list_cameras.py`): Command-line utility to quickly summarize highway and camera counts from parsed datasets.
-- **DATEX II / CCISS Overlays** (`DatexParser module`): Export traffic alerts for Spain, France, and Italy to per-country OBS overlay data files.
+- **DATEX II / CCISS Overlays** (`DatexParser module`): Export traffic alerts for Spain, France, Italy, and the Netherlands to per-country OBS overlay data files. Netherlands DATEX II alerts are enriched from NDW VILD Alert-C location data.
 
 ## Usage Examples
 
@@ -87,6 +87,12 @@ Generate a single country overlay:
 uv run get_datex.py --country ES --once
 ```
 
+Generate the Netherlands overlay from the NDW gzipped DATEX II feed:
+
+```bash
+uv run get_datex.py --country NL --once
+```
+
 Use a custom road whitelist:
 
 ```bash
@@ -111,6 +117,22 @@ Use the per-country overlay UI files:
 data/overlay_spain/index.html
 data/overlay_france/index.html
 data/overlay_italy/index.html
+data/overlay_netherlands/index.html
+```
+
+**Netherlands VILD lookup**
+
+The Netherlands DATEX parser uses `DatexParser/data/vild_6.13.A.sqlite` to
+translate Alert-C/VILD `LOC_NR` values into road names, nearby areas, and
+administrative fields. The VILD value is exported as `reference_marker`; VILD
+hectometer ranges and DATEX offsets are used internally to estimate `km_point`.
+Raw `alertc_*` fields and VILD `km_start_*` / `km_end_*` ranges are not written
+to `overlay_data.json`.
+
+Rebuild the SQLite lookup from the NDW VILD DBF when updating VILD versions:
+
+```bash
+uv run DatexParser/vild_dbf_to_sqlite.py path/to/VILD6.13.A.dbf DatexParser/data/vild_6.13.A.sqlite
 ```
 
 ## Project Structure
@@ -122,7 +144,7 @@ The project is split into three modules and an orchestration script.
 - `config.py`: Stores country-specific constants and shared settings.
 - `Downloaders/`: Contains the scraping module for each country.
 - `Parsers/`: Contains the parsing module for each country.
-- `DatexParser/`: Contains DATEX II XML parsing, Italian CCISS parsing, heuristic filtering, and overlay export code.
+- `DatexParser/`: Contains DATEX II XML parsing, Italian CCISS parsing, Dutch VILD lookup generation, heuristic filtering, and overlay export code.
 - `tools/`: Contains the tools for checking, visualizing, and locally serving OBS runtime artifacts.
 - `data/`: Contains the raw and processed camera data plus per-country overlay assets.
 
@@ -147,5 +169,9 @@ The project is split into three modules and an orchestration script.
 - **Spain**
   - DGT (Dirección General de Tráfico)
   - DATEX II Feed
+- **Netherlands**
+  - Rijkswaterstaat cameras
+  - NDW DATEX II actueel beeld feed
+  - NDW VILD location reference data
 - **UK**
   - Highways England
