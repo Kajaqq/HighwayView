@@ -1,6 +1,6 @@
 """DATEX II parser for traffic situation data.
 
-Parses Spanish DATEX II v3 and French DATEX II v2 SituationPublication
+Parses Spanish/Dutch DATEX II v3 and French DATEX II v2 SituationPublication
 XML feeds. Every ``situationRecord`` becomes a
 :class:`TruckDashboardAlert`, and the parser exposes three filtering
 methods for downstream consumers (road, admin-area, and GPS-radius
@@ -28,14 +28,12 @@ from lxml import etree
 from Downloaders.base_downloader import GenericDownloader, HTTPError
 from Parsers.base_parser import BaseParser
 from tools.utils import haversine_km
-
 from .datex_models import (
     NON_TRUCK_VEHICLE_TYPES,
     LocationPoint,
     TruckDashboardAlert,
 )
 
-# The live DGT DATEX II v3.6 feed URL.
 _DATEX_V2_NAMESPACE_MARKER = "/schema/2/"
 _DUTCH_NAMESPACE_MARKERS = ("nlExtensions", "nlxExtensions")
 _XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
@@ -262,7 +260,7 @@ class DatexParser(BaseParser):
         return await self.downloader.download(self.datex_url)
 
     # ------------------------------------------------------------------
-    # Filtering (Phase 4)
+    # Filtering 
     # ------------------------------------------------------------------
 
     def filter_by_road(self, road: str) -> list[TruckDashboardAlert]:
@@ -348,7 +346,6 @@ class DatexParser(BaseParser):
             if _within(a.location_from) or _within(a.location_to)
         ]
 
-    # Convenience alias from the plan's "Final Delivery Format"
     def get_alerts_near(
         self, lat: float, lon: float, radius: float
     ) -> list[TruckDashboardAlert]:
