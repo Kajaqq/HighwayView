@@ -504,3 +504,14 @@ class CONSTANTS:
         DATEX_URL = "https://opendata.ndw.nu/actueel_beeld.xml.gz"
         DATEX_OVERLAY_DIR = "overlay_netherlands"
         DATEX_ROADS = []
+    
+    class BE:
+        BASE_URL = "https://verkeerscentrum.be/vvc"
+        REFERER_URL = "https://www.verkeerscentrum.be/"
+        REFERER_HEADER = {"Referer": REFERER_URL}
+        CAMERA_API = BASE_URL + "/map-data/cameras"
+        EXCLUDED_API = BASE_URL + "/camera-streaming-event"
+        DATA_API = BASE_URL + "/map-popup-content/"
+        CAMERA_URL = "https://players.media.verkeerscentrum.be/?name={internal_name}.stream"
+        CAMERA_IMG_URL = "https://snapshots.media.verkeerscentrum.be/{internal_name}.stream.jpg"
+        IMAGE_EXT = ".jpg"
