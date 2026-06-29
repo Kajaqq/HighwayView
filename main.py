@@ -6,6 +6,7 @@ import winloop
 
 from config import CONSTANTS
 from Parsers import france_parser
+from Parsers.be_parser import BEParser
 from Parsers.italy_parser import ItalyParser
 from Parsers.nl_parser import NLParser
 from Parsers.spain_parser import SpainParser
@@ -100,6 +101,9 @@ async def get_camera_data(country: str, save_unchecked: bool, save_checked: bool
         case "NL":
             nl_parser = NLParser()
             country_data = await get_raw_parsed_data(parser=nl_parser,output_path=save_unchecked_path)
+        case "BE":
+            be_parser = BEParser()
+            country_data = await get_raw_parsed_data(parser=be_parser,output_path=save_unchecked_path)
         case _:
             raise ValueError(f"Invalid country: {country}")
 
@@ -155,6 +159,12 @@ async def main() -> None:
     nl_data = await get_camera_data("NL", save_unchecked, save_checked, default_dir)
     if create_html:
         create_html_files(nl_data, HTML_OUTPUT_DIR)
+
+    # BELGIUM
+    # BE has no configured highway sequence, so we just get all checked cameras.
+    be_data = await get_camera_data("BE", save_unchecked, save_checked, default_dir)
+    if create_html:
+        create_html_files(be_data, HTML_OUTPUT_DIR)
 
 
 if __name__ == "__main__":

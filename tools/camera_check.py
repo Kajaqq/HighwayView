@@ -89,7 +89,10 @@ async def check_camera(
         if len(bytes_) < 1000:
             raise HTTPError(f"Response too small: {len(bytes_)} bytes")
 
-    if source != "IT":
+    if source == "BE":
+        url = CONSTANTS.BE.CAMERA_IMG_URL.format(internal_name=camera_id)
+        ext = CONSTANTS.BE.IMAGE_EXT
+    elif source != "IT":
         # Create the URL based on the source and camera type
         url, ext = create_url(source, camera_id, camera_type)
     else:
@@ -102,7 +105,11 @@ async def check_camera(
 
     async with rate_limiter:
         response_bytes = b""
-        headers = CONSTANTS.NL.REFERER_HEADER if source == "NL" else None
+        headers = None
+        if source == "NL":
+            headers = CONSTANTS.NL.REFERER_HEADER
+        elif source == "BE":
+            headers = CONSTANTS.BE.REFERER_HEADER
         try:
             async with client.get(url, allow_redirects=True, headers=headers) as response:
                 response.raise_for_status()

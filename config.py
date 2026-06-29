@@ -19,6 +19,7 @@ class CONSTANTS:
             "IT": "Italy",
             "UK": "UK",
             "NL": "Netherlands",
+            "BE": "Belgium",
         }
         DATA_DIR = PROJECT_ROOT / Path("data/")
         IMG_DIR_NAME = Path("images/")
@@ -512,6 +513,6 @@ class CONSTANTS:
         CAMERA_API = BASE_URL + "/map-data/cameras"
         EXCLUDED_API = BASE_URL + "/camera-streaming-event"
         DATA_API = BASE_URL + "/map-popup-content/"
-        CAMERA_URL = "https://players.media.verkeerscentrum.be/?name={internal_name}.stream"
+        CAMERA_URL = "https://players.media.verkeerscentrum.be/?name={internal_name}"
         CAMERA_IMG_URL = "https://snapshots.media.verkeerscentrum.be/{internal_name}.stream.jpg"
         IMAGE_EXT = ".jpg"

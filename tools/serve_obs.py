@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import logging
 import socket
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -34,6 +34,10 @@ NL_ASSET_BASE_URL = "https://img.inmoves.nl/"
 NL_ASSET_PROXY_PREFIX = "/proxy/cameras/NL/assets/"
 NL_STREAM_PROXY_PREFIX = "/proxy/streams/NL/"
 NL_STREAM_REFERER_HEADER = {"Referer": CONSTANTS.NL.CAMERA_URL}
+BE_PLAYER_BASE_URL = "https://players.media.verkeerscentrum.be/"
+BE_ASSET_PROXY_PREFIX = "/proxy/cameras/BE/assets/"
+BE_HLS_BASE_URL = "https://hls.media.verkeerscentrum.be/"
+BE_STREAM_PROXY_PREFIX = "/proxy/streams/BE/"
 PROXY_RESPONSE_HEADERS = ("Content-Type", "Accept-Ranges", "Content-Range")
 
 
@@ -85,18 +89,29 @@ def _proxy_response_headers(
     return {**headers, **PROXY_CACHE_HEADERS}
 
 
-def _rewrite_nl_stream_url(upstream_url: str) -> str:
+def _rewrite_stream_url(
+        upstream_url: str,
+        *,
+        upstream_host: str,
+        proxy_prefix: str,
+) -> str:
     parsed_url = urlparse(upstream_url)
-    if parsed_url.netloc != "stream.inmoves.nl":
+    if parsed_url.netloc != upstream_host:
         return upstream_url
 
-    proxy_url = f"{NL_STREAM_PROXY_PREFIX}{parsed_url.path.lstrip('/')}"
+    proxy_url = f"{proxy_prefix}{parsed_url.path.lstrip('/')}"
     if parsed_url.query:
         proxy_url = f"{proxy_url}?{parsed_url.query}"
     return proxy_url
 
 
-def _rewrite_nl_hls_playlist(body: bytes, upstream_url: str) -> bytes:
+def _rewrite_hls_playlist(
+        body: bytes,
+        upstream_url: str,
+        *,
+        upstream_host: str,
+        proxy_prefix: str,
+) -> bytes:
     text = body.decode("utf-8")
     rewritten_lines: list[str] = []
 
@@ -107,7 +122,11 @@ def _rewrite_nl_hls_playlist(body: bytes, upstream_url: str) -> bytes:
             continue
 
         rewritten_lines.append(
-            _rewrite_nl_stream_url(urljoin(upstream_url, stripped_line))
+            _rewrite_stream_url(
+                urljoin(upstream_url, stripped_line),
+                upstream_host=upstream_host,
+                proxy_prefix=proxy_prefix,
+            )
         )
 
     rewritten_text = "\n".join(rewritten_lines)
@@ -125,6 +144,241 @@ def _rewrite_nl_proxy_body(body: bytes) -> bytes:
         .replace(b"http://stream.inmoves.nl/", NL_STREAM_PROXY_PREFIX.encode())
         .replace(b"//stream.inmoves.nl/", NL_STREAM_PROXY_PREFIX.encode())
     )
+
+
+def _rewrite_be_proxy_body(body: bytes) -> bytes:
+    return (
+        body.replace(b'src="js/', f'src="{BE_ASSET_PROXY_PREFIX}js/'.encode())
+        .replace(b"src='js/", f"src='{BE_ASSET_PROXY_PREFIX}js/".encode())
+        .replace(BE_HLS_BASE_URL.encode(), BE_STREAM_PROXY_PREFIX.encode())
+        .replace(b"http://hls.media.verkeerscentrum.be/", BE_STREAM_PROXY_PREFIX.encode())
+        .replace(b"//hls.media.verkeerscentrum.be/", BE_STREAM_PROXY_PREFIX.encode())
+    )
+
+
+def _camera_proxy_url(
+        request: web.Request,
+        *,
+        route_name: str,
+        camera_id: str,
+        query: str = "",
+) -> str:
+    proxy_url = str(request.app.router[route_name].url_for(camera_id=camera_id))
+    if query:
+        return f"{proxy_url}?{query}"
+    return proxy_url
+
+
+def _proxied_camera_urls(
+        request: web.Request,
+        camera_urls: list[tuple[str, str, str, int, str]],
+        country: str,
+) -> list[tuple[str, str, str, int, str]]:
+    if country == "BE":
+        proxy_url = str(request.app.router["be_camera_proxy"].url_for())
+        return [
+            (
+                camera_id,
+                f"{proxy_url}?name={camera_id}",
+                highway_name,
+                camera_number,
+                media_type,
+            )
+            for camera_id, _url, highway_name, camera_number, media_type in camera_urls
+        ]
+
+    route_names = {"NL": "camera_proxy"}
+    route_name = route_names.get(country)
+    if route_name is None:
+        return camera_urls
+
+    proxied_urls = []
+    for camera_id, url, highway_name, camera_number, media_type in camera_urls:
+        query = urlparse(url).query if country == "NL" else ""
+        proxied_urls.append(
+            (
+                camera_id,
+                _camera_proxy_url(
+                    request,
+                    route_name=route_name,
+                    camera_id=camera_id,
+                    query=query,
+                ),
+                highway_name,
+                camera_number,
+                media_type,
+            )
+        )
+    return proxied_urls
+
+
+async def _fetch_camera_embed(
+        request: web.Request,
+        *,
+        country: str,
+        camera_id: str,
+        upstream_url: str,
+        headers: dict[str, str],
+        rewrite_body: Callable[[bytes], bytes],
+) -> web.Response:
+    session: ClientSession = request.app["proxy_session"]
+    LOGGER.info("%s proxy request camera_id=%s upstream=%s", country, camera_id, upstream_url)
+    try:
+        async with session.get(
+                upstream_url,
+                allow_redirects=True,
+                headers=headers,
+        ) as response:
+            body = await response.read()
+            content_type = response.headers.get("Content-Type", "text/html")
+            if content_type.startswith(("text/html", "application/xhtml+xml")):
+                body = rewrite_body(body)
+            LOGGER.info(
+                "%s upstream response camera_id=%s status=%s content_type=%s "
+                "bytes=%s final_url=%s",
+                country,
+                camera_id,
+                response.status,
+                content_type,
+                len(body),
+                response.url,
+            )
+            if response.status >= 400:
+                LOGGER.warning(
+                    "%s upstream error camera_id=%s upstream=%s body=%r",
+                    country,
+                    camera_id,
+                    upstream_url,
+                    body[:500].decode("utf-8", errors="replace"),
+                )
+                raise web.HTTPBadGateway(
+                    text=f"{country} camera upstream returned HTTP {response.status}."
+                )
+
+            return web.Response(
+                body=body,
+                status=response.status,
+                headers={
+                    "Content-Type": content_type,
+                    **PROXY_CACHE_HEADERS,
+                },
+            )
+    except TimeoutError as e:
+        LOGGER.warning(
+            "%s upstream timed out camera_id=%s upstream=%s",
+            country,
+            camera_id,
+            upstream_url,
+        )
+        raise web.HTTPGatewayTimeout(text=f"{country} camera upstream timed out.") from e
+    except ClientError as e:
+        LOGGER.warning(
+            "%s upstream request failed camera_id=%s upstream=%s error=%s",
+            country,
+            camera_id,
+            upstream_url,
+            e,
+        )
+        raise web.HTTPBadGateway(
+            text=f"{country} camera upstream request failed: {e}"
+        ) from e
+
+
+async def _fetch_asset(
+        request: web.Request,
+        *,
+        country: str,
+        upstream_url: str,
+        headers: dict[str, str],
+        rewrite_javascript: Callable[[bytes], bytes] | None = None,
+) -> web.Response:
+    session: ClientSession = request.app["proxy_session"]
+    LOGGER.info("%s asset proxy request upstream=%s", country, upstream_url)
+    try:
+        async with session.get(
+                upstream_url,
+                allow_redirects=True,
+                headers=headers,
+        ) as response:
+            body = await response.read()
+            content_type = response.headers.get("Content-Type", "application/octet-stream")
+            if rewrite_javascript is not None and "javascript" in content_type.lower():
+                body = rewrite_javascript(body)
+
+            return web.Response(
+                body=body,
+                status=response.status,
+                headers=_proxy_response_headers(response),
+            )
+    except TimeoutError as e:
+        LOGGER.warning("%s asset upstream timed out upstream=%s", country, upstream_url)
+        raise web.HTTPGatewayTimeout(text=f"{country} asset upstream timed out.") from e
+    except ClientError as e:
+        LOGGER.warning(
+            "%s asset upstream request failed upstream=%s error=%s",
+            country,
+            upstream_url,
+            e,
+        )
+        raise web.HTTPBadGateway(text=f"{country} asset upstream request failed: {e}") from e
+
+
+async def _fetch_stream(
+        request: web.Request,
+        *,
+        country: str,
+        stream_path: str,
+        upstream_url: str,
+        headers: dict[str, str],
+        upstream_host: str,
+        proxy_prefix: str,
+) -> web.Response:
+    request_headers = dict(headers)
+    if range_header := request.headers.get("Range"):
+        request_headers["Range"] = range_header
+
+    session: ClientSession = request.app["proxy_session"]
+    LOGGER.info("%s stream proxy request upstream=%s", country, upstream_url)
+    try:
+        async with session.get(
+                upstream_url,
+                allow_redirects=True,
+                headers=request_headers,
+        ) as response:
+            body = await response.read()
+            content_type = response.headers.get("Content-Type", "application/octet-stream")
+            content_type_lower = content_type.lower()
+            is_hls_playlist = (
+                    "mpegurl" in content_type_lower
+                    or stream_path.endswith((".m3u8", ".m3u"))
+            )
+            if response.status < 400 and is_hls_playlist:
+                body = _rewrite_hls_playlist(
+                    body,
+                    upstream_url,
+                    upstream_host=upstream_host,
+                    proxy_prefix=proxy_prefix,
+                )
+
+            return web.Response(
+                body=body,
+                status=response.status,
+                headers=_proxy_response_headers(
+                    response,
+                    include_content_length=not is_hls_playlist,
+                ),
+            )
+    except TimeoutError as e:
+        LOGGER.warning("%s stream upstream timed out upstream=%s", country, upstream_url)
+        raise web.HTTPGatewayTimeout(text=f"{country} stream upstream timed out.") from e
+    except ClientError as e:
+        LOGGER.warning(
+            "%s stream upstream request failed upstream=%s error=%s",
+            country,
+            upstream_url,
+            e,
+        )
+        raise web.HTTPBadGateway(text=f"{country} stream upstream request failed: {e}") from e
 
 
 # noinspection PyUnusedLocal
@@ -160,18 +414,7 @@ async def cameras(request: web.Request) -> web.Response:
     if not camera_urls:
         raise web.HTTPNotFound(text="No cameras found.")
 
-    if detected_country == "NL":
-        proxied_camera_urls = []
-        for camera_id, url, highway_name, camera_number, media_type in camera_urls:
-            proxy_url = str(
-                request.app.router["camera_proxy"].url_for(camera_id=camera_id)
-            )
-            if query := urlparse(url).query:
-                proxy_url = f"{proxy_url}?{query}"
-            proxied_camera_urls.append(
-                (camera_id, proxy_url, highway_name, camera_number, media_type)
-            )
-        camera_urls = proxied_camera_urls
+    camera_urls = _proxied_camera_urls(request, camera_urls, detected_country)
 
     return web.Response(
         text=generate_html(camera_urls, _interval_seconds(request), detected_country),
@@ -190,61 +433,34 @@ async def camera_proxy(request: web.Request) -> web.Response:
     except ValueError as e:
         raise web.HTTPBadRequest(text=str(e)) from e
 
-    session: ClientSession = request.app["proxy_session"]
-    LOGGER.info("NL proxy request camera_id=%s upstream=%s", camera_id, upstream_url)
-    try:
-        async with session.get(
-                upstream_url,
-                allow_redirects=True,
-                headers=CONSTANTS.NL.REFERER_HEADER,
-        ) as response:
-            body = await response.read()
-            content_type = response.headers.get("Content-Type", "text/html")
-            if content_type.startswith(("text/html", "application/xhtml+xml")):
-                body = _rewrite_nl_proxy_body(body)
-            LOGGER.info(
-                "NL upstream response camera_id=%s status=%s content_type=%s "
-                "bytes=%s final_url=%s",
-                camera_id,
-                response.status,
-                content_type,
-                len(body),
-                response.url,
-            )
-            if response.status >= 400:
-                LOGGER.warning(
-                    "NL upstream error camera_id=%s upstream=%s body=%r",
-                    camera_id,
-                    upstream_url,
-                    body[:500].decode("utf-8", errors="replace"),
-                )
-                raise web.HTTPBadGateway(
-                    text=f"NL camera upstream returned HTTP {response.status}."
-                )
+    return await _fetch_camera_embed(
+        request,
+        country="NL",
+        camera_id=camera_id,
+        upstream_url=upstream_url,
+        headers=CONSTANTS.NL.REFERER_HEADER,
+        rewrite_body=_rewrite_nl_proxy_body,
+    )
 
-            return web.Response(
-                body=body,
-                status=response.status,
-                headers={
-                    "Content-Type": content_type,
-                    **PROXY_CACHE_HEADERS,
-                },
-            )
-    except TimeoutError as e:
-        LOGGER.warning(
-            "NL upstream timed out camera_id=%s upstream=%s",
-            camera_id,
-            upstream_url,
-        )
-        raise web.HTTPGatewayTimeout(text="NL camera upstream timed out.") from e
-    except ClientError as e:
-        LOGGER.warning(
-            "NL upstream request failed camera_id=%s upstream=%s error=%s",
-            camera_id,
-            upstream_url,
-            e,
-        )
-        raise web.HTTPBadGateway(text=f"NL camera upstream request failed: {e}") from e
+
+async def be_camera_proxy(request: web.Request) -> web.Response:
+    camera_id = request.query.get("name")
+    if not camera_id:
+        raise web.HTTPBadRequest(text="Missing BE camera name.")
+
+    try:
+        upstream_url, _ext = create_url("BE", camera_id, "vid")
+    except ValueError as e:
+        raise web.HTTPBadRequest(text=str(e)) from e
+
+    return await _fetch_camera_embed(
+        request,
+        country="BE",
+        camera_id=camera_id,
+        upstream_url=upstream_url,
+        headers=CONSTANTS.BE.REFERER_HEADER,
+        rewrite_body=_rewrite_be_proxy_body,
+    )
 
 
 async def nl_asset_proxy(request: web.Request) -> web.Response:
@@ -256,30 +472,30 @@ async def nl_asset_proxy(request: web.Request) -> web.Response:
     if request.query_string:
         upstream_url = f"{upstream_url}?{request.query_string}"
 
-    session: ClientSession = request.app["proxy_session"]
-    LOGGER.info("NL asset proxy request upstream=%s", upstream_url)
-    try:
-        async with session.get(
-                upstream_url,
-                allow_redirects=True,
-                headers=NL_STREAM_REFERER_HEADER,
-        ) as response:
-            body = await response.read()
-            content_type = response.headers.get("Content-Type", "application/octet-stream")
-            if "javascript" in content_type.lower():
-                body = _rewrite_nl_proxy_body(body)
+    return await _fetch_asset(
+        request,
+        country="NL",
+        upstream_url=upstream_url,
+        headers=NL_STREAM_REFERER_HEADER,
+        rewrite_javascript=_rewrite_nl_proxy_body,
+    )
 
-            return web.Response(
-                body=body,
-                status=response.status,
-                headers=_proxy_response_headers(response),
-            )
-    except TimeoutError as e:
-        LOGGER.warning("NL asset upstream timed out upstream=%s", upstream_url)
-        raise web.HTTPGatewayTimeout(text="NL asset upstream timed out.") from e
-    except ClientError as e:
-        LOGGER.warning("NL asset upstream request failed upstream=%s error=%s", upstream_url, e)
-        raise web.HTTPBadGateway(text=f"NL asset upstream request failed: {e}") from e
+
+async def be_asset_proxy(request: web.Request) -> web.Response:
+    asset_path = request.match_info["asset_path"]
+    if not asset_path:
+        raise web.HTTPNotFound(text="Missing BE asset path.")
+
+    upstream_url = urljoin(BE_PLAYER_BASE_URL, asset_path)
+    if request.query_string:
+        upstream_url = f"{upstream_url}?{request.query_string}"
+
+    return await _fetch_asset(
+        request,
+        country="BE",
+        upstream_url=upstream_url,
+        headers=CONSTANTS.BE.REFERER_HEADER,
+    )
 
 
 async def nl_stream_proxy(request: web.Request) -> web.Response:
@@ -291,42 +507,35 @@ async def nl_stream_proxy(request: web.Request) -> web.Response:
     if request.query_string:
         upstream_url = f"{upstream_url}?{request.query_string}"
 
-    request_headers = dict(NL_STREAM_REFERER_HEADER)
-    if range_header := request.headers.get("Range"):
-        request_headers["Range"] = range_header
+    return await _fetch_stream(
+        request,
+        country="NL",
+        stream_path=stream_path,
+        upstream_url=upstream_url,
+        headers=NL_STREAM_REFERER_HEADER,
+        upstream_host="stream.inmoves.nl",
+        proxy_prefix=NL_STREAM_PROXY_PREFIX,
+    )
 
-    session: ClientSession = request.app["proxy_session"]
-    LOGGER.info("NL stream proxy request upstream=%s", upstream_url)
-    try:
-        async with session.get(
-                upstream_url,
-                allow_redirects=True,
-                headers=request_headers,
-        ) as response:
-            body = await response.read()
-            content_type = response.headers.get("Content-Type", "application/octet-stream")
-            content_type_lower = content_type.lower()
-            is_hls_playlist = (
-                    "mpegurl" in content_type_lower
-                    or stream_path.endswith((".m3u8", ".m3u"))
-            )
-            if response.status < 400 and is_hls_playlist:
-                body = _rewrite_nl_hls_playlist(body, upstream_url)
 
-            return web.Response(
-                body=body,
-                status=response.status,
-                headers=_proxy_response_headers(
-                    response,
-                    include_content_length=not is_hls_playlist,
-                ),
-            )
-    except TimeoutError as e:
-        LOGGER.warning("NL stream upstream timed out upstream=%s", upstream_url)
-        raise web.HTTPGatewayTimeout(text="NL stream upstream timed out.") from e
-    except ClientError as e:
-        LOGGER.warning("NL stream upstream request failed upstream=%s error=%s", upstream_url, e)
-        raise web.HTTPBadGateway(text=f"NL stream upstream request failed: {e}") from e
+async def be_stream_proxy(request: web.Request) -> web.Response:
+    stream_path = request.match_info["stream_path"]
+    if not stream_path:
+        raise web.HTTPNotFound(text="Missing BE stream path.")
+
+    upstream_url = f"{BE_HLS_BASE_URL}{stream_path}"
+    if request.query_string:
+        upstream_url = f"{upstream_url}?{request.query_string}"
+
+    return await _fetch_stream(
+        request,
+        country="BE",
+        stream_path=stream_path,
+        upstream_url=upstream_url,
+        headers=CONSTANTS.BE.REFERER_HEADER,
+        upstream_host="hls.media.verkeerscentrum.be",
+        proxy_prefix=BE_STREAM_PROXY_PREFIX,
+    )
 
 
 async def overlay_redirect(request: web.Request) -> web.Response:
@@ -359,8 +568,11 @@ def create_app() -> web.Application:
     app.router.add_get(
         "/proxy/cameras/NL/{camera_id}/embed", camera_proxy, name="camera_proxy"
     )
+    app.router.add_get("/proxy/cameras/BE/", be_camera_proxy, name="be_camera_proxy")
     app.router.add_get("/proxy/cameras/NL/assets/{asset_path:.*}", nl_asset_proxy)
+    app.router.add_get("/proxy/cameras/BE/assets/{asset_path:.*}", be_asset_proxy)
     app.router.add_get("/proxy/streams/NL/{stream_path:.*}", nl_stream_proxy)
+    app.router.add_get("/proxy/streams/BE/{stream_path:.*}", be_stream_proxy)
     app.router.add_get("/overlay/{country}", overlay_redirect)
     app.router.add_get("/overlay/{country}/", overlay_asset)
     app.router.add_get("/overlay/{country}/{asset}", overlay_asset)

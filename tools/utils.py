@@ -105,7 +105,10 @@ def create_url(base: str, camera_id: str | int, camera_type: str) -> tuple[str, 
                 "vid": (CONSTANTS.FRANCE.CAMERA_URL, CONSTANTS.FRANCE.VIDEO_EXT),
                 "img": (CONSTANTS.FRANCE.CAMERA_URL, CONSTANTS.FRANCE.IMAGE_EXT)
             }
-            base_url, ext = url_ext_dict.get(camera_type)
+            url_ext = url_ext_dict.get(camera_type)
+            if url_ext is None:
+                raise ValueError(f"Invalid camera type for France: {camera_type}")
+            base_url, ext = url_ext
             return base_url.format(camera_id=camera_id), ext
         case "ES":
             base_url = CONSTANTS.SPAIN.CAMERA_URL
@@ -120,8 +123,13 @@ def create_url(base: str, camera_id: str | int, camera_type: str) -> tuple[str, 
                 'img': (CONSTANTS.NL.CAMERA_URL, CONSTANTS.NL.IMAGE_EXT),
                 'iframe': (CONSTANTS.NL.CAMERA_URL, CONSTANTS.NL.IFRAME_EXT)
             }
-            base_url, ext = url_ext_dict.get(camera_type)
+            url_ext = url_ext_dict.get(camera_type)
+            if url_ext is None:
+                raise ValueError(f"Invalid camera type for NL: {camera_type}")
+            base_url, ext = url_ext
             return f"{base_url}{camera_id}{ext}", ext
+        case "BE":
+            return CONSTANTS.BE.CAMERA_URL.format(internal_name=camera_id), None
         case _:
             raise ValueError("Invalid data")
 

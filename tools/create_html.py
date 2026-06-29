@@ -52,6 +52,10 @@ def get_camera_urls(
                 if country == "IT":
                     url = camera["url"]
                     media_type = "video"
+                elif country == "BE":
+                    camera_type = camera.get("camera_type", "")
+                    url, _ = create_url(country, cid, camera_type)
+                    media_type = "iframe"
                 elif country == "NL":
                     camera_type = camera.get("camera_type", "")
                     url, _ = create_url(country, cid, camera_type)
@@ -90,6 +94,10 @@ def get_camera_urls(
             if country == "IT":
                 url = camera["url"]
                 media_type = "video"
+            elif country == "BE":
+                camera_type = camera.get("camera_type", "")
+                url, _ = create_url(country, camera_id, camera_type)
+                media_type = "iframe"
             elif country == "NL":
                 camera_type = camera.get("camera_type", "")
                 url, _ = create_url(country, camera_id, camera_type)
