@@ -60,18 +60,21 @@ uv run tools/list_cameras.py data/cameras_it_online.json
 Serve current generated camera and overlay artifacts through a local aiohttp server:
 
 ```bash
-uv run tools/serve_obs.py --country NL
+uv run tools/serve_obs.py
 ```
 
 Use these URLs in OBS Browser Source:
 
 ```text
 http://127.0.0.1:8765/cameras/NL
+http://127.0.0.1:8765/cameras/BE
 http://127.0.0.1:8765/overlay/ES/
 ```
 
-NL camera media is proxied through the local server so HighwayView can attach
-the required provider `Referer` header when fetching the actual camera feed.
+NL and BE camera media are proxied through the local server so HighwayView can
+attach provider `Referer` headers when fetching the actual camera feeds. BE
+slideshow iframes use `/proxy/cameras/BE/?name=<camera_id>`; the local server
+then proxies the BE player assets and HLS stream URLs.
 
 ### DatexParser module examples 
 **Generate Traffic Alert Overlays**
@@ -173,5 +176,7 @@ The project is split into three modules and an orchestration script.
   - Rijkswaterstaat cameras
   - NDW DATEX II actueel beeld feed
   - NDW VILD location reference data
+- **Belgium**
+  - Vlaams Verkeerscentrum cameras
 - **UK**
   - Highways England

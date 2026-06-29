@@ -34,7 +34,7 @@ main.py
        -> data/html/<country>_slideshow.html
   -> tools.serve_obs
        -> hourly refresh through main.get_camera_data()
-       -> NL camera media proxy with provider Referer header
+       -> NL and BE camera media proxies with provider Referer headers
        -> in-memory OBS slideshow HTML from data/cameras_<country>_online.json
 ```
 
@@ -51,6 +51,9 @@ What flows through the camera pipeline:
   `config.py` to select a compact loop for OBS.
 - `tools.create_html` turns normalized camera records or selected IDs into a
   self-contained slideshow page.
+- Belgium has a provider-specific media split: normalized records keep the
+  internal stream name as `camera_id`, `camera_check` validates the snapshot
+  JPEG, and slideshow/runtime display uses the iframe player URL.
 
 Why the flow is split this way:
 
@@ -127,7 +130,7 @@ Why the alert flow is separate from cameras:
 | `tools/camera_check.py` | Camera media verification, offline filtering, and duplicate/error-image detection. | Online/offline detection, sample downloads, or checked JSON output changes. |
 | `tools/create_camera_loop.py` | Country-specific route ordering and sampled camera loop selection. | OBS loop composition or highway ordering changes. |
 | `tools/create_html.py` | Slideshow HTML generation from normalized camera records. | Browser slideshow behavior, markup, styling, or media loading changes. |
-| `tools/serve_obs.py` | Local aiohttp runtime server for OBS Browser Source URLs over generated artifacts, with timed refresh calls into existing pipeline entrypoints. | Serving routes, local response behavior, or refresh scheduling changes. |
+| `tools/serve_obs.py` | Local aiohttp runtime server for OBS Browser Source URLs over generated artifacts, including NL and BE media proxy routes that attach provider `Referer` headers. | Serving routes, local response behavior, or refresh scheduling changes. |
 | `tools/utils.py` | Shared JSON, URL, coordinate, country, and distance helpers. | A cross-cutting primitive is reused by multiple pipeline stages. |
 | `data/` | Runtime output and static overlay assets. | Usually do not change generated JSON or sampled media as source behavior. Static overlay HTML/CSS/JS can be changed when UI behavior changes. |
 | `docs/` | Human architecture notes and generated API documentation. | You need project-level guidance or regenerated reference docs. |
@@ -173,13 +176,18 @@ CCISS, or VILD directly.
 - Change camera media URL generation: update `tools.utils.create_url()` for
   countries whose final media URL is derived from normalized camera IDs; update a
   parser only when the upstream metadata itself changed.
+- Change provider-specific camera checking: update `tools/camera_check.py` when
+  the verification URL differs from the display URL, as with Belgium snapshots
+  versus iframe playback.
 - Change camera availability rules: update `tools/camera_check.py`, because it is
   the stage that validates media responses and removes offline records.
 - Change OBS slideshow behavior: update `tools/create_html.py` for rendering and
   loading behavior, or `tools/create_camera_loop.py` for which cameras enter the
   loop.
 - Change local OBS serving behavior: update `tools/serve_obs.py`, keeping it as
-  a presentation/runtime layer over existing generated artifacts.
+  a presentation/runtime layer over existing generated artifacts. BE iframe,
+  player asset, and HLS URLs are proxied locally so the provider `Referer`
+  header can be sent consistently.
 - Change traffic alert source parsing: update `DatexParser/datex_parser.py` for
   Spain, France, or Netherlands DATEX XML, or `DatexParser/cciss_parser.py` for
   Italy CCISS.
