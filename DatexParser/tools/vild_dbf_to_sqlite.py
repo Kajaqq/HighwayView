@@ -10,6 +10,54 @@ from pathlib import Path
 
 DEFAULT_TABLE = "vild_locations"
 TABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+LOC_DESCRIPTION_TRANSLATIONS = {
+    "Land": "Land",
+    "Zee": "Sea",
+    "Fuzzy gebied": "Fuzzy area",
+    "Provincie": "Province",
+    "RWS Regionale Dienst": "RWS Regional Service",
+    "RWS Wegendistrict": "RWS Road District",
+    "Plaats": "Town",
+    "P&R terrein": "P&R area",
+    "Parkeergebied": "Parking area",
+    "Parkeerterrein": "Parking lot",
+    "Gemeente": "Municipality",
+    "Veerdienst": "Ferry service",
+    "Orde 2 segment": "Order 2 segment",
+    "Orde 1 segment": "Order 1 segment",
+    "Snelweg": "Highway",
+    "Ringweg": "Ring road",
+    "Eerste klasse weg": "First class road",
+    "Knooppunt (triangle)": "Junction (triangle)",
+    "Verbindingsweg": "Connecting road/Slip road",
+    "Afrit": "Exit",
+    "Aquaduct": "Aqueduct",
+    "Parkeerplaats (service)": "Parking lot (service)",
+    "Parkeerplaats (rest)": "Parking lot (rest)",
+    "Knooppunt": "Junction",
+    "Brug": "Bridge",
+    "Hectometersprong": "Hectometer jump",
+    "Grensovergang": "Border crossing",
+    "Tunnel": "Tunnel",
+    "Tankstation": "Gas station",
+    "Kruising": "Intersection",
+    "Aansluiting": "Connection",
+    "Sluis": "Lock",
+    "Verkeersplein": "Roundabout junction",
+    "Spoorwegovergang": "Railway crossing",
+    "Veerterminal": "Ferry terminal",
+    "Veer": "Ferry",
+    "Bebouwde kom": "Built-up area",
+    "Industriegebied": "Industrial area",
+    "Tol": "Toll",
+    "Stadsringweg": "City ring road",
+    "Tweede klasse weg": "Second class road",
+    "Haven": "Harbor/Port",
+}
+TEXT_TRANSLATIONS = {
+    "vanuit": "from",
+    "richting": "towards",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +153,16 @@ def _text_or_none(value: str | None) -> str | None:
     return value.strip() or None
 
 
+def _translated_text_or_none(
+    value: str | None,
+    translations: dict[str, str] = TEXT_TRANSLATIONS,
+) -> str | None:
+    text = _text_or_none(value)
+    if text is None:
+        return None
+    return translations.get(text, text)
+
+
 def _join_unique(separator: str, *values: str | None) -> str | None:
     parts: list[str] = []
     seen: set[str] = set()
@@ -129,8 +187,8 @@ def build_lookup_rows(rows: list[dict[str, str]]) -> list[tuple]:
         area = rows_by_loc.get(_int_or_none(row.get("AREA_REF")) or 0, {})
         road_number = _text_or_none(row.get("ROADNUMBER"))
         road_name = _text_or_none(row.get("ROADNAME"))
-        first_name = _text_or_none(row.get("FIRST_NAME"))
-        second_name = _text_or_none(row.get("SECND_NAME"))
+        from_name = _translated_text_or_none(row.get("FIRST_NAME"))
+        to_name = _translated_text_or_none(row.get("SECND_NAME"))
 
         lookup_rows.append(
             (
@@ -138,12 +196,18 @@ def build_lookup_rows(rows: list[dict[str, str]]) -> list[tuple]:
                 road_number,
                 road_name,
                 _join_unique(" ", road_number, road_name),
-                first_name,
-                second_name,
-                _join_unique(" - ", first_name, second_name),
-                _join_unique(" - ", area.get("FIRST_NAME"), area.get("SECND_NAME")),
+                from_name,
+                to_name,
+                _join_unique(
+                    " - ",
+                    _translated_text_or_none(area.get("FIRST_NAME")),
+                    _translated_text_or_none(area.get("SECND_NAME")),
+                ),
                 _text_or_none(row.get("LOC_TYPE")),
-                _text_or_none(row.get("LOC_DES")),
+                _translated_text_or_none(
+                    row.get("LOC_DES"),
+                    LOC_DESCRIPTION_TRANSLATIONS,
+                ),
                 _int_or_none(row.get("AREA_REF")),
                 _int_or_none(row.get("LIN_REF")),
                 _km_or_none(row.get("HSTART_POS")),
@@ -171,12 +235,11 @@ def write_sqlite(sqlite_file: Path, table: str, rows: list[tuple]) -> None:
                 road_number TEXT,
                 road_name TEXT,
                 road_label TEXT,
-                first_name TEXT,
-                second_name TEXT,
-                place_name TEXT,
+                "from" TEXT,
+                "to" TEXT,
                 area_name TEXT,
+                loc_type_id TEXT,
                 loc_type TEXT,
-                loc_description TEXT,
                 area_ref INTEGER,
                 line_ref INTEGER,
                 km_start_pos REAL,
@@ -193,12 +256,11 @@ def write_sqlite(sqlite_file: Path, table: str, rows: list[tuple]) -> None:
                 road_number,
                 road_name,
                 road_label,
-                first_name,
-                second_name,
-                place_name,
+                "from",
+                "to",
                 area_name,
+                loc_type_id,
                 loc_type,
-                loc_description,
                 area_ref,
                 line_ref,
                 km_start_pos,
@@ -206,7 +268,7 @@ def write_sqlite(sqlite_file: Path, table: str, rows: list[tuple]) -> None:
                 km_start_neg,
                 km_end_neg
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
