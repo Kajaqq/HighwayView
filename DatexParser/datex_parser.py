@@ -1,13 +1,12 @@
 """DATEX II parser for traffic situation data.
 
-Parses Spanish/Dutch DATEX II v3 and French DATEX II v2 SituationPublication
-XML feeds. Every ``situationRecord`` becomes a
-:class:`TruckDashboardAlert`, and the parser exposes three filtering
-methods for downstream consumers (road, admin-area, and GPS-radius
-queries).
+Parses Spanish, Dutch, and Belgian DATEX II v3 plus French DATEX II v2
+SituationPublication XML feeds.
+Every ``situationRecord`` becomes a ``TruckDashboardAlert``,
+and the parser exposes three filtering methods for downstream consumers
+(road, admin-area, and GPS-radius queries).
 
-Example::
-
+Example:
     parser = DatexParser(downloader=GenericDownloader())
     alerts = await parser.get_parsed_data()
     nearby = parser.get_alerts_near(lat=38.98, lon=-5.53, radius=100)
@@ -22,8 +21,8 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-
-from lxml import etree
+from typing import Any
+from xml.etree import ElementTree as ET
 
 from Downloaders.base_downloader import GenericDownloader, HTTPError
 from Parsers.base_parser import BaseParser
@@ -35,12 +34,20 @@ from .datex_models import (
 )
 
 _DATEX_V2_NAMESPACE_MARKER = "/schema/2/"
+_DATEX_V3_NAMESPACES: dict[str, str] = {
+    "com": "http://datex2.eu/schema/3/common",
+    "sit": "http://datex2.eu/schema/3/situation",
+    "loc": "http://datex2.eu/schema/3/locationReferencing",
+    "d2p": "http://datex2.eu/schema/3/d2Payload",
+}
 _DUTCH_NAMESPACE_MARKERS = ("nlExtensions", "nlxExtensions")
 _XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 _ROAD_NUMBER_PADDING_RE = re.compile(r"([A-Za-z])0+(?=\d)")
 _FRENCH_PR_RE = re.compile(r"^\d{2}PR(\d+)")
 _DUTCH_ROAD_RE = re.compile(r"\b([AN])[-\s]?(\d{1,3})\b", re.IGNORECASE)
+_BELGIAN_JUNCTION_PREFIX_RE = re.compile(r"^\d+[A-Za-z]?\s+")
 _DUTCH_VILD_DB = Path(__file__).parent / "data" / "vild_6.13.A.sqlite"
+_BELGIAN_TMC_DATA = Path(__file__).parent / "data" / "be_tmc_data.json"
 _DATEX_HTTP_RETRIES = 3
 
 _FRENCH_DETAIL_TAGS: tuple[str, ...] = (
@@ -93,19 +100,29 @@ _DUTCH_RECORD_CAUSE_TYPES: dict[str, str] = {
     "WeatherRelatedRoadConditions": "poorWeatherConditions",
 }
 
+_BELGIAN_DETAIL_TAGS: tuple[str, ...] = (
+    "sit:roadMaintenanceType",
+    *_DUTCH_DETAIL_TAGS,
+)
+
+_BELGIAN_RECORD_CAUSE_TYPES: dict[str, str] = {
+    "AbnormalTraffic": "abnormalTraffic",
+    "MaintenanceWorks": "roadMaintenance",
+    "RoadOrCarriagewayOrLaneManagement": "roadOrCarriagewayOrLaneManagement",
+    "VehicleObstruction": "vehicleObstruction",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class _VildLocation:
     loc_nr: int
     road_number: str | None
     road_name: str | None
-    road_label: str | None
-    first_name: str | None
-    second_name: str | None
-    place_name: str | None
+    from_name: str | None
+    to_name: str | None
     area_name: str | None
+    loc_type_id: str | None
     loc_type: str | None
-    loc_description: str | None
     area_ref: int | None
     line_ref: int | None
     km_start_pos: float | None
@@ -114,6 +131,16 @@ class _VildLocation:
     km_end_neg: float | None
 
 
+@dataclass(frozen=True, slots=True)
+class _BelgianTmcLocation:
+    location_id: str
+    group: str
+    category_code: str
+    category: str
+    fields: dict[str, str]
+
+
+# noinspection PyMethodOverriding
 class DatexParser(BaseParser):
     """Parser for DATEX II SituationPublication XML.
 
@@ -144,6 +171,7 @@ class DatexParser(BaseParser):
         self._country = country_code
         self._alerts: list[TruckDashboardAlert] = []
         self._dutch_vild_locations: dict[int, _VildLocation] | None = None
+        self._belgian_tmc_locations: dict[str, _BelgianTmcLocation] | None = None
 
     @property
     def country(self) -> str:
@@ -168,13 +196,16 @@ class DatexParser(BaseParser):
         Returns:
             A list of :class:`TruckDashboardAlert` instances.
         """
-        xml_parser = etree.XMLParser(resolve_entities=False, no_network=True)
-        root = etree.fromstring(raw_data.encode("utf-8"), parser=xml_parser)
-        nsmap = self._build_nsmap(root)
+        raw_bytes = raw_data.encode("utf-8")
+        root = ET.fromstring(raw_bytes)
+        nsmap = self._build_nsmap(raw_bytes)
 
         if self._is_datex_v2(nsmap):
             alerts = self._parse_french_v2(root, nsmap)
             country = "FR"
+        elif self._is_belgian_v3(root, nsmap):
+            alerts = self._parse_belgian_v3(root, nsmap)
+            country = "BE"
         elif self._country == "NL" or self._is_dutch_v3(nsmap):
             alerts = self._parse_dutch_v3(root, nsmap)
             country = "NL"
@@ -188,7 +219,7 @@ class DatexParser(BaseParser):
 
     def _parse_spanish_v3(
         self,
-        root: etree.ElementBase,
+        root: ET.Element,
         nsmap: dict[str, str],
     ) -> list[TruckDashboardAlert]:
         """Parse Spain's DATEX II v3 SituationPublication payload."""
@@ -213,7 +244,7 @@ class DatexParser(BaseParser):
         self,
         output_file: str | Path | None = None,
         output_folder: str | Path | None = None,
-    ) -> list[TruckDashboardAlert]:
+    ) -> list[TruckDashboardAlert]:  # ty:ignore[invalid-method-override]
         """Download, parse, and optionally save DATEX II alerts.
 
         Args:
@@ -386,23 +417,27 @@ class DatexParser(BaseParser):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _build_nsmap(root: etree.ElementBase) -> dict[str, str]:
-        """Build a prefix → URI namespace map from the XML root.
+    def _build_nsmap(source: bytes) -> dict[str, str]:
+        """Build a prefix → URI namespace map from an XML document.
 
         Args:
-            root: The lxml root element.
+            source: Raw XML bytes.
 
         Returns:
             Namespace dictionary suitable for ``findall`` / ``find``.
         """
         nsmap: dict[str, str] = {}
-        for element in root.iter():
-            for prefix, uri in element.nsmap.items():
-                if prefix is None:
-                    if _DATEX_V2_NAMESPACE_MARKER in uri:
-                        nsmap.setdefault("d2", uri)
-                    continue
+        from io import BytesIO
+
+        for event, payload in ET.iterparse(BytesIO(source), events=("start-ns",)):
+            prefix, uri = payload
+            if prefix:
                 nsmap.setdefault(prefix, uri)
+            if _DATEX_V2_NAMESPACE_MARKER in uri:
+                nsmap.setdefault("d2", uri)
+            for alias, namespace in _DATEX_V3_NAMESPACES.items():
+                if uri == namespace:
+                    nsmap.setdefault(alias, uri)
 
         for uri in tuple(nsmap.values()):
             if _DATEX_V2_NAMESPACE_MARKER in uri:
@@ -424,9 +459,33 @@ class DatexParser(BaseParser):
             for marker in _DUTCH_NAMESPACE_MARKERS
         )
 
+    def _is_belgian_v3(
+        self,
+        root: ET.Element,
+        nsmap: dict[str, str],
+    ) -> bool:
+        if self._country == "BE":
+            return True
+        if "com" not in nsmap:
+            return False
+        country = self._text(root, "com:publicationCreator/com:country", nsmap)
+        return (country or "").upper() == "BE"
+
+    @staticmethod
+    def _find_v3_situations(
+        root: ET.Element,
+        nsmap: dict[str, str],
+    ) -> list[ET.Element]:
+        situations: list[ET.Element] = []
+        if "sit" in nsmap:
+            situations.extend(root.findall(".//sit:situation", nsmap))
+        if "d2p" in nsmap:
+            situations.extend(root.findall(".//d2p:situation", nsmap))
+        return situations
+
     @staticmethod
     def _text(
-        element: etree.ElementBase,
+        element: ET.Element,
         xpath: str,
         nsmap: dict[str, str],
     ) -> str | None:
@@ -473,9 +532,24 @@ class DatexParser(BaseParser):
             return None
         return value.rsplit(":", maxsplit=1)[-1]
 
+    @staticmethod
+    def _normalize_direction(value: str | None) -> str | None:
+        if value is None:
+            return None
+        direction = value.strip().lower()
+        if not direction:
+            return None
+        return {
+            "+": "positive",
+            "-": "negative",
+            "bothdirections": "both",
+            "both directions": "both",
+            "both_directions": "both",
+        }.get(direction, direction)
+
     def _first_text(
         self,
-        element: etree.ElementBase,
+        element: ET.Element,
         paths: tuple[str, ...],
         nsmap: dict[str, str],
     ) -> str | None:
@@ -508,7 +582,7 @@ class DatexParser(BaseParser):
 
     def _parse_french_v2(
         self,
-        root: etree.ElementBase,
+        root: ET.Element,
         nsmap: dict[str, str],
     ) -> list[TruckDashboardAlert]:
         """Parse French DATEX II v2 SituationPublication XML.
@@ -540,7 +614,7 @@ class DatexParser(BaseParser):
 
     def _parse_french_v2_record(
         self,
-        record: etree.ElementBase,
+        record: ET.Element,
         situation_id: str,
         overall_severity: str | None,
         nsmap: dict[str, str],
@@ -640,7 +714,7 @@ class DatexParser(BaseParser):
 
     def _parse_french_group_of_locations(
         self,
-        record: etree.ElementBase,
+        record: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, LocationPoint | None, str | None]:
         """Parse French v2 ``groupOfLocations`` into model points."""
@@ -662,7 +736,7 @@ class DatexParser(BaseParser):
                     "d2:alertCLinear/d2:alertCDirection/d2:alertCDirectionCoded",
                     nsmap,
                 )
-            return location_from, location_to, direction
+            return location_from, location_to, self._normalize_direction(direction)
 
         point_location = group.find("d2:tpegPointLocation", nsmap)
         if point_location is not None:
@@ -695,14 +769,14 @@ class DatexParser(BaseParser):
                     "d2:alertCPoint/d2:alertCDirection/d2:alertCDirectionCoded",
                     nsmap,
                 )
-            return location, None, direction
+            return location, None, self._normalize_direction(direction)
 
         return None, None, None
 
     def _parse_french_linear_points(
         self,
-        group: etree.ElementBase,
-        linear: etree.ElementBase,
+        group: ET.Element,
+        linear: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, LocationPoint | None]:
         """Parse a French v2 TPEG linear location with PR/Alert-C metadata."""
@@ -747,7 +821,7 @@ class DatexParser(BaseParser):
 
     def _parse_french_tpeg_point(
         self,
-        point_el: etree.ElementBase,
+        point_el: ET.Element,
         nsmap: dict[str, str],
     ) -> LocationPoint:
         """Extract coordinates and town name from a French v2 TPEG point."""
@@ -793,7 +867,7 @@ class DatexParser(BaseParser):
     def _apply_french_pr_reference(
         self,
         location: LocationPoint | None,
-        reference_el: etree.ElementBase | None,
+        reference_el: ET.Element | None,
         nsmap: dict[str, str],
     ) -> LocationPoint | None:
         """Add French PR reference-marker metadata to a location point."""
@@ -817,7 +891,7 @@ class DatexParser(BaseParser):
     def _apply_french_alertc_location(
         self,
         location: LocationPoint | None,
-        alertc_el: etree.ElementBase | None,
+        alertc_el: ET.Element | None,
         nsmap: dict[str, str],
     ) -> LocationPoint | None:
         """Add Alert-C/TMC metadata to a location point."""
@@ -848,7 +922,7 @@ class DatexParser(BaseParser):
 
     def _extract_french_road_name(
         self,
-        record: etree.ElementBase,
+        record: ET.Element,
         nsmap: dict[str, str],
     ) -> str | None:
         """Extract the best French road designation."""
@@ -869,7 +943,7 @@ class DatexParser(BaseParser):
 
     def _extract_french_tpeg_name(
         self,
-        point_el: etree.ElementBase,
+        point_el: ET.Element,
         descriptor_type: str,
         nsmap: dict[str, str],
     ) -> str | None:
@@ -884,7 +958,7 @@ class DatexParser(BaseParser):
 
     def _extract_french_public_comments(
         self,
-        record: etree.ElementBase,
+        record: ET.Element,
         nsmap: dict[str, str],
     ) -> list[str]:
         """Return cleaned French ``generalPublicComment`` values."""
@@ -910,7 +984,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_v3(
         self,
-        root: etree.ElementBase,
+        root: ET.Element,
         nsmap: dict[str, str],
     ) -> list[TruckDashboardAlert]:
         """Parse NDW DATEX II v3 SituationPublication payloads."""
@@ -936,7 +1010,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_v3_record(
         self,
-        record: etree.ElementBase,
+        record: ET.Element,
         situation_id: str,
         overall_severity: str | None,
         nsmap: dict[str, str],
@@ -1042,7 +1116,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_location(
         self,
-        loc_ref: etree.ElementBase,
+        loc_ref: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, LocationPoint | None, str | None]:
         loc_type = self._strip_type_prefix(loc_ref.get(f"{{{_XSI_NS}}}type"))
@@ -1061,7 +1135,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_point_location(
         self,
-        loc_ref: etree.ElementBase,
+        loc_ref: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, str | None]:
         point_by_coordinates = loc_ref.find("loc:pointByCoordinates", nsmap)
@@ -1070,28 +1144,25 @@ class DatexParser(BaseParser):
             if point_by_coordinates is not None
             else LocationPoint()
         )
-        location = self._merge_location_points(
-            location,
-            self._parse_dutch_alertc_point(
-                loc_ref.find("loc:alertCPoint", nsmap),
-                nsmap,
-                self._text(
-                    loc_ref,
-                    "loc:alertCPoint/loc:alertCDirection/loc:alertCDirectionCoded",
-                    nsmap,
-                ),
-            ),
-        )
         direction = self._text(
             loc_ref,
             "loc:alertCPoint/loc:alertCDirection/loc:alertCDirectionCoded",
             nsmap,
         )
+        direction = self._normalize_direction(direction)
+        location = self._merge_location_points(
+            location,
+            self._parse_dutch_alertc_point(
+                loc_ref.find("loc:alertCPoint", nsmap),
+                nsmap,
+                direction,
+            ),
+        )
         return location, direction
 
     def _parse_dutch_itinerary_location(
         self,
-        loc_ref: etree.ElementBase,
+        loc_ref: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, LocationPoint | None, str | None]:
         location_from: LocationPoint | None = None
@@ -1113,7 +1184,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_linear_location(
         self,
-        location: etree.ElementBase,
+        location: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, LocationPoint | None, str | None]:
         location_from, location_to = self._parse_dutch_gml_line_points(
@@ -1132,7 +1203,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_point_by_coordinates(
         self,
-        point_el: etree.ElementBase,
+        point_el: ET.Element,
         nsmap: dict[str, str],
     ) -> LocationPoint:
         lat = self._text(point_el, "loc:pointCoordinates/loc:latitude", nsmap)
@@ -1144,7 +1215,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_gml_line_points(
         self,
-        location: etree.ElementBase,
+        location: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, LocationPoint | None]:
         pos_list = self._text(location, "loc:gmlLineString/loc:posList", nsmap)
@@ -1169,7 +1240,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_alertc_point(
         self,
-        alertc_el: etree.ElementBase | None,
+        alertc_el: ET.Element | None,
         nsmap: dict[str, str],
         direction: str | None,
     ) -> LocationPoint | None:
@@ -1183,7 +1254,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_alertc_linear(
         self,
-        location: etree.ElementBase,
+        location: ET.Element,
         nsmap: dict[str, str],
     ) -> tuple[LocationPoint | None, LocationPoint | None, str | None]:
         alertc_linear = location.find("loc:alertCLinear", nsmap)
@@ -1195,6 +1266,7 @@ class DatexParser(BaseParser):
             "loc:alertCDirection/loc:alertCDirectionCoded",
             nsmap,
         )
+        direction = self._normalize_direction(direction)
         location_from = self._parse_dutch_alertc_method_location(
             alertc_linear.find("loc:alertCMethod4SecondaryPointLocation", nsmap),
             nsmap,
@@ -1211,7 +1283,7 @@ class DatexParser(BaseParser):
 
     def _parse_dutch_alertc_method_location(
         self,
-        method_el: etree.ElementBase | None,
+        method_el: ET.Element | None,
         nsmap: dict[str, str],
         direction: str | None = None,
         role: str = "point",
@@ -1239,7 +1311,7 @@ class DatexParser(BaseParser):
 
     def _extract_dutch_public_comments(
         self,
-        record: etree.ElementBase,
+        record: ET.Element,
         nsmap: dict[str, str],
     ) -> list[str]:
         comments: list[str] = []
@@ -1264,30 +1336,27 @@ class DatexParser(BaseParser):
             self._dutch_vild_locations = {}
             return self._dutch_vild_locations
 
-        query = """
-            SELECT
-                loc_nr,
-                road_number,
-                road_name,
-                road_label,
-                first_name,
-                second_name,
-                place_name,
-                area_name,
-                loc_type,
-                loc_description,
-                area_ref,
-                line_ref,
-                km_start_pos,
-                km_end_pos,
-                km_start_neg,
-                km_end_neg
-            FROM vild_locations
-        """
-
         try:
             with sqlite3.connect(_DUTCH_VILD_DB) as db:
                 db.row_factory = sqlite3.Row
+                query = """
+                    SELECT
+                        loc_nr,
+                        road_number,
+                        road_name,
+                        "from" AS from_name,
+                        "to" AS to_name,
+                        area_name,
+                        loc_type_id,
+                        loc_type,
+                        area_ref,
+                        line_ref,
+                        km_start_pos,
+                        km_end_pos,
+                        km_start_neg,
+                        km_end_neg
+                    FROM vild_locations
+                """
                 rows = db.execute(query).fetchall()
         except sqlite3.Error:
             self._dutch_vild_locations = {}
@@ -1298,13 +1367,11 @@ class DatexParser(BaseParser):
                 loc_nr=int(row["loc_nr"]),
                 road_number=row["road_number"],
                 road_name=row["road_name"],
-                road_label=row["road_label"],
-                first_name=row["first_name"],
-                second_name=row["second_name"],
-                place_name=row["place_name"],
+                from_name=row["from_name"],
+                to_name=row["to_name"],
                 area_name=row["area_name"],
+                loc_type_id=row["loc_type_id"],
                 loc_type=row["loc_type"],
-                loc_description=row["loc_description"],
                 area_ref=row["area_ref"],
                 line_ref=row["line_ref"],
                 km_start_pos=row["km_start_pos"],
@@ -1334,35 +1401,28 @@ class DatexParser(BaseParser):
         line = locations.get(vild.line_ref or 0)
         road_number = vild.road_number or (line.road_number if line else None)
         road_name = vild.road_name or (line.road_name if line else None)
-        road_label = vild.road_label or (line.road_label if line else None)
         admin_update: dict[str, str] = {}
         visited: set[int] = set()
         area: _VildLocation | None = vild
 
         while area is not None and area.loc_nr not in visited:
             visited.add(area.loc_nr)
-            name = area.place_name or area.first_name
-            if name and area.loc_description == "Provincie":
+            name = self._format_vild_location_name(area) or area.from_name
+            if name and area.loc_type in {"Provincie", "Province"}:
                 admin_update.setdefault("province", name)
-            elif name and area.loc_description == "Gemeente":
+            elif name and area.loc_type in {"Gemeente", "Municipality"}:
                 admin_update.setdefault("municipality", name)
-            elif name and area.loc_description == "Plaats":
+            elif name and area.loc_type in {"Plaats", "Town"}:
                 admin_update.setdefault("community", name)
             area = locations.get(area.area_ref or 0)
 
         update = {
-            "alertc_location_name": vild.place_name or vild.first_name,
+            "alertc_location_name": self._format_vild_location_name(vild)
+            or vild.from_name,
             "alertc_road_number": road_number,
             "alertc_road_name": road_name,
-            "alertc_road_label": road_label,
-            "alertc_first_name": vild.first_name,
-            "alertc_second_name": vild.second_name,
-            "alertc_place_name": vild.place_name,
             "alertc_area_name": vild.area_name,
-            "alertc_location_type": vild.loc_type,
-            "alertc_location_description": vild.loc_description,
-            "alertc_area_ref": vild.area_ref,
-            "alertc_line_ref": vild.line_ref,
+            "alertc_location_type": vild.loc_type_id,
             "reference_marker": str(vild.loc_nr),
             "km_point": self._estimate_dutch_km_point(
                 vild,
@@ -1375,6 +1435,14 @@ class DatexParser(BaseParser):
         return location.model_copy(
             update={key: value for key, value in update.items() if value is not None}
         )
+
+    @staticmethod
+    def _format_vild_location_name(vild: _VildLocation) -> str | None:
+        names = []
+        for name in (vild.from_name, vild.to_name):
+            if name and name not in names:
+                names.append(name)
+        return " - ".join(names) if names else None
 
     @staticmethod
     def _estimate_dutch_km_point(
@@ -1456,9 +1524,312 @@ class DatexParser(BaseParser):
         except ValueError:
             return None
 
+    # ------------------------------------------------------------------
+    # Belgian DATEX II v3 helpers
+    # ------------------------------------------------------------------
+
+    def _parse_belgian_v3(
+        self,
+        root: ET.Element,
+        nsmap: dict[str, str],
+    ) -> list[TruckDashboardAlert]:
+        """Parse Vlaams Verkeerscentrum DATEX II v3 payloads."""
+        self._country = "BE"
+        alerts: list[TruckDashboardAlert] = []
+
+        for situation in self._find_v3_situations(root, nsmap):
+            situation_id = situation.get("id", "")
+            overall_severity = self._text(situation, "sit:overallSeverity", nsmap)
+
+            for record in situation.findall("sit:situationRecord", nsmap):
+                alert = self._parse_belgian_v3_record(
+                    record,
+                    situation_id,
+                    overall_severity,
+                    nsmap,
+                )
+                if self.truck_only and self._is_non_truck_only(alert):
+                    continue
+                alerts.append(alert)
+
+        return alerts
+
+    def _parse_belgian_v3_record(
+        self,
+        record: ET.Element,
+        situation_id: str,
+        overall_severity: str | None,
+        nsmap: dict[str, str],
+    ) -> TruckDashboardAlert:
+        record_type = self._strip_type_prefix(record.get(f"{{{_XSI_NS}}}type"))
+        loc_ref = record.find("sit:locationReference", nsmap)
+        direction = (
+            self._parse_belgian_direction(loc_ref, nsmap)
+            if loc_ref is not None
+            else None
+        )
+        location_from, location_to = (
+            self._parse_belgian_alertc_locations(loc_ref, nsmap)
+            if loc_ref is not None
+            else (None, None)
+        )
+
+        return TruckDashboardAlert(
+            situation_id=situation_id,
+            record_id=record.get("id", ""),
+            creation_time=self._parse_datetime(
+                self._text(record, "sit:situationRecordCreationTime", nsmap)
+            ),
+            version_time=self._parse_datetime(
+                self._text(record, "sit:situationRecordVersionTime", nsmap)
+            ),
+            severity=self._text(record, "sit:severity", nsmap) or overall_severity,
+            start_time=self._parse_datetime(
+                self._text(
+                    record,
+                    "sit:validity/com:validityTimeSpecification/com:overallStartTime",
+                    nsmap,
+                )
+            ),
+            end_time=self._parse_datetime(
+                self._text(
+                    record,
+                    "sit:validity/com:validityTimeSpecification/com:overallEndTime",
+                    nsmap,
+                )
+            ),
+            management_type=self._first_text(
+                record,
+                (
+                    "sit:roadOrCarriagewayOrLaneManagementType",
+                    "sit:speedManagementType",
+                    "sit:reroutingManagementType",
+                    "sit:generalNetworkManagementType",
+                ),
+                nsmap,
+            ),
+            vehicle_type=self._text(
+                record,
+                "sit:forVehiclesWithCharacteristicsOf/com:vehicleType",
+                nsmap,
+            ),
+            cause_type=(
+                self._text(record, "sit:cause/sit:causeType", nsmap)
+                or _BELGIAN_RECORD_CAUSE_TYPES.get(record_type or "")
+                or record_type
+            ),
+            detailed_cause_type=self._first_text(
+                record,
+                _BELGIAN_DETAIL_TAGS,
+                nsmap,
+            ),
+            road_name=self._extract_belgian_road_name(location_from, location_to),
+            road_destination=self._extract_belgian_road_destination(
+                location_from,
+                location_to,
+            ),
+            direction=direction,
+            location_from=location_from,
+            location_to=location_to,
+            safety_related_message=self._bool_or_none(
+                self._text(record, "sit:safetyRelatedMessage", nsmap)
+            ),
+        )
+
+    def _parse_belgian_direction(
+        self,
+        loc_ref: ET.Element,
+        nsmap: dict[str, str],
+    ) -> str | None:
+        direction = self._first_text(
+            loc_ref,
+            (
+                "loc:alertCPoint/loc:alertCDirection/loc:alertCDirectionCoded",
+                "loc:alertCLinear/loc:alertCDirection/loc:alertCDirectionCoded",
+            ),
+            nsmap,
+        )
+        return self._normalize_direction(direction)
+
+    def _parse_belgian_alertc_locations(
+        self,
+        loc_ref: ET.Element,
+        nsmap: dict[str, str],
+    ) -> tuple[LocationPoint | None, LocationPoint | None]:
+        alertc_linear = loc_ref.find("loc:alertCLinear", nsmap)
+        if alertc_linear is not None:
+            return (
+                self._parse_belgian_alertc_method_location(
+                    alertc_linear.find(
+                        "loc:alertCMethod4SecondaryPointLocation",
+                        nsmap,
+                    ),
+                    nsmap,
+                ),
+                self._parse_belgian_alertc_method_location(
+                    alertc_linear.find(
+                        "loc:alertCMethod4PrimaryPointLocation",
+                        nsmap,
+                    ),
+                    nsmap,
+                ),
+            )
+
+        alertc_point = loc_ref.find("loc:alertCPoint", nsmap)
+        if alertc_point is not None:
+            return (
+                self._parse_belgian_alertc_method_location(
+                    alertc_point.find(
+                        "loc:alertCMethod4PrimaryPointLocation",
+                        nsmap,
+                    ),
+                    nsmap,
+                ),
+                None,
+            )
+
+        return None, None
+
+    def _parse_belgian_alertc_method_location(
+        self,
+        method_el: ET.Element | None,
+        nsmap: dict[str, str],
+    ) -> LocationPoint | None:
+        if method_el is None:
+            return None
+
+        location_id = self._text(
+            method_el,
+            "loc:alertCLocation/loc:specificLocation",
+            nsmap,
+        )
+        if location_id is None:
+            return None
+
+        location = LocationPoint(
+            alertc_location_id=location_id,
+            reference_marker=location_id,
+            offset_m=self._float_or_none(
+                self._text(method_el, "loc:offsetDistance/loc:offsetDistance", nsmap)
+            ),
+        )
+        return self._enrich_belgian_tmc_location(location)
+
+    def _enrich_belgian_tmc_location(self, location: LocationPoint) -> LocationPoint:
+        location_id = location.alertc_location_id
+        if location_id is None:
+            return location
+
+        tmc_location = self._get_belgian_tmc_locations().get(location_id)
+        if tmc_location is None:
+            return location
+
+        fields = tmc_location.fields
+        update = {
+            "alertc_location_name": self._format_belgian_tmc_location_name(fields),
+            "alertc_road_number": fields.get("Intersects"),
+            "alertc_road_name": fields.get("Road name"),
+            "alertc_location_type": tmc_location.category,
+            "alertc_area_name": fields.get("Name")
+            if tmc_location.group == "locations"
+            else None,
+        }
+        return location.model_copy(
+            update={key: value for key, value in update.items() if value is not None}
+        )
+
+    def _get_belgian_tmc_locations(self) -> dict[str, _BelgianTmcLocation]:
+        if self._belgian_tmc_locations is not None:
+            return self._belgian_tmc_locations
+
+        try:
+            raw_data: Any = json.loads(_BELGIAN_TMC_DATA.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            self._belgian_tmc_locations = {}
+            return self._belgian_tmc_locations
+
+        locations: dict[str, _BelgianTmcLocation] = {}
+        if not isinstance(raw_data, dict):
+            self._belgian_tmc_locations = locations
+            return locations
+
+        for group, categories in raw_data.items():
+            if not isinstance(categories, dict):
+                continue
+
+            for category_label, records in categories.items():
+                if not isinstance(records, dict):
+                    continue
+
+                category_code, separator, category = str(category_label).partition(
+                    " - "
+                )
+                if not separator:
+                    category = str(category_label)
+
+                for location_id, fields in records.items():
+                    if isinstance(fields, dict):
+                        normalized_fields = {
+                            str(key): str(value)
+                            for key, value in fields.items()
+                            if value is not None
+                        }
+                    elif fields is None:
+                        normalized_fields = {}
+                    else:
+                        normalized_fields = {"Name": str(fields)}
+
+                    locations[str(location_id)] = _BelgianTmcLocation(
+                        location_id=str(location_id),
+                        group=str(group),
+                        category_code=category_code,
+                        category=category,
+                        fields=normalized_fields,
+                    )
+
+        self._belgian_tmc_locations = locations
+        return locations
+
+    @staticmethod
+    def _format_belgian_tmc_location_name(fields: dict[str, str]) -> str | None:
+        name = fields.get("Name")
+        junction_number = fields.get("Junction number")
+        if name and junction_number:
+            return f"{junction_number} {name}"
+        return name
+
+    @staticmethod
+    def _extract_belgian_road_name(
+        *locations: LocationPoint | None,
+    ) -> str | None:
+        road_numbers: list[str] = []
+        for location in locations:
+            if location is None or not location.alertc_road_number:
+                continue
+            if location.alertc_road_number not in road_numbers:
+                road_numbers.append(location.alertc_road_number)
+        return "/".join(road_numbers) if road_numbers else None
+
+    @staticmethod
+    def _extract_belgian_road_destination(
+        *locations: LocationPoint | None,
+    ) -> str | None:
+        names: list[str] = []
+        for location in locations:
+            if location is None or not location.alertc_location_name:
+                continue
+            name = _BELGIAN_JUNCTION_PREFIX_RE.sub(
+                "",
+                location.alertc_location_name,
+                count=1,
+            )
+            if name not in names:
+                names.append(name)
+        return " -> ".join(names) if names else None
+
     def _parse_record(
         self,
-        record: etree.ElementBase,
+        record: ET.Element,
         situation_id: str,
         overall_severity: str | None,
         nsmap: dict[str, str],
@@ -1586,7 +1957,7 @@ class DatexParser(BaseParser):
         )
 
     def _parse_tpeg_point(
-        self, point_el: etree.ElementBase, nsmap: dict[str, str]
+        self, point_el: ET.Element, nsmap: dict[str, str]
     ) -> LocationPoint:
         """Extract a LocationPoint from a TpegNonJunctionPoint element.
 
@@ -1617,7 +1988,7 @@ class DatexParser(BaseParser):
         )
 
     def _parse_linear_location(
-        self, loc_ref: etree.ElementBase, nsmap: dict[str, str]
+        self, loc_ref: ET.Element, nsmap: dict[str, str]
     ) -> tuple[LocationPoint | None, LocationPoint | None, str | None]:
         """Parse a ``SingleRoadLinearLocation`` into from/to points.
 
@@ -1647,10 +2018,10 @@ class DatexParser(BaseParser):
             "loc:_tpegLinearLocationExtension/loc:extendedTpegLinearLocation/lse:tpegDirectionRoad",
             nsmap,
         )
-        return location_from, location_to, direction
+        return location_from, location_to, self._normalize_direction(direction)
 
     def _parse_point_location(
-        self, loc_ref: etree.ElementBase, nsmap: dict[str, str]
+        self, loc_ref: ET.Element, nsmap: dict[str, str]
     ) -> tuple[LocationPoint | None, str | None]:
         """Parse a ``PointLocation`` into a single point.
 
@@ -1675,7 +2046,7 @@ class DatexParser(BaseParser):
             "loc:_tpegSimplePointExtension/loc:extendedTpegSimplePoint/lse:tpegDirectionRoad",
             nsmap,
         )
-        return location, direction
+        return location, self._normalize_direction(direction)
 
     @staticmethod
     def _is_non_truck_only(alert: TruckDashboardAlert) -> bool:

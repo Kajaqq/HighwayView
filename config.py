@@ -505,7 +505,7 @@ class CONSTANTS:
         DATEX_URL = "https://opendata.ndw.nu/actueel_beeld.xml.gz"
         DATEX_OVERLAY_DIR = "overlay_netherlands"
         DATEX_ROADS = []
-    
+
     class BE:
         BASE_URL = "https://verkeerscentrum.be/vvc"
         REFERER_URL = "https://www.verkeerscentrum.be/"
@@ -516,3 +516,6 @@ class CONSTANTS:
         CAMERA_URL = "https://players.media.verkeerscentrum.be/?name={internal_name}"
         CAMERA_IMG_URL = "https://snapshots.media.verkeerscentrum.be/{internal_name}.stream.jpg"
         IMAGE_EXT = ".jpg"
+        DATEX_URL = "https://www.verkeerscentrum.be/uitwisseling/datex2v3full"
+        DATEX_OVERLAY_DIR = "overlay_belgium"
+        DATEX_ROADS = []

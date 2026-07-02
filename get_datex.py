@@ -67,6 +67,22 @@ COUNTRY_CONFIGS: dict[str, dict] = {
             "country_code": "NL",
         },
     },
+    "BE": {
+        "roads": CONSTANTS.BE.DATEX_ROADS,
+        "output_dir": CONSTANTS.BE.DATEX_OVERLAY_DIR,
+        "filter_config": FilterConfig(
+            transient_ttl_days=2,
+            roadworks_ttl_days=1800,
+            infrastructure_ttl_days=1095,
+            low_severity_ttl_days=2,
+            highest_road_closed_bonus=365,
+            suspicious_threshold=0.75,
+        ),
+        "parser_kwargs": {
+            "datex_url": CONSTANTS.BE.DATEX_URL,
+            "country_code": "BE",
+        },
+    },
 }
 
 
@@ -76,7 +92,7 @@ def parse_args():
     )
     parser.add_argument(
         "--country",
-        choices=["ES", "FR", "IT", "NL", "all"],
+        choices=["ES", "FR", "IT", "NL", "BE", "all"],
         default="all",
         help="Which country to process (default: all).",
     )
