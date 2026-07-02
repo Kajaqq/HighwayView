@@ -42,6 +42,10 @@ def _serialize_location(alert: TruckDashboardAlert, field_name: str) -> dict[str
         "offset_m": location.offset_m if location else None,
         "alertc_location_id": location.alertc_location_id if location else None,
         "alertc_location_name": location.alertc_location_name if location else None,
+        "alertc_road_number": location.alertc_road_number if location else None,
+        "alertc_road_name": location.alertc_road_name if location else None,
+        "alertc_location_type": location.alertc_location_type if location else None,
+        "alertc_area_name": location.alertc_area_name if location else None,
         "community": location.community if location else None,
         "province": location.province if location else None,
         "municipality": location.municipality if location else None,
@@ -162,13 +166,17 @@ async def run_overlay_export_loop(
     skip_filter: bool = False,
 ) -> None:
     while True:
-        target = await export_overlay_data(
-            output_file=output_file,
-            roads=roads,
-            max_items=max_items,
-            filter_config=filter_config,
-            parser=parser,
-            skip_filter=skip_filter,
-        )
-        print(f"[{country_code}] Overlay data updated: {target}")
+        try:
+            target = await export_overlay_data(
+                output_file=output_file,
+                roads=roads,
+                max_items=max_items,
+                filter_config=filter_config,
+                parser=parser,
+                skip_filter=skip_filter,
+            )
+        except Exception as e:
+            print(f"[{country_code}] Overlay export failed: {e}")
+        else:
+            print(f"[{country_code}] Overlay data updated: {target}")
         await asyncio.sleep(interval_seconds)
