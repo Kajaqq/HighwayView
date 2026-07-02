@@ -152,7 +152,17 @@ class CcissParser:
         return alerts
 
     def parse(self, raw_data: str) -> list[TruckDashboardAlert]:
-        data = json.loads(raw_data)
+        try:
+            data = json.loads(raw_data)
+        except json.JSONDecodeError as e:
+            sample = " ".join(raw_data.split())[:240] or "<empty response>"
+            raise ValueError(f"CCISS response is not JSON: {sample!r}") from e
+
+        if not isinstance(data, dict):
+            raise TypeError(
+                f"CCISS response must be a JSON object, got {type(data).__name__}"
+            )
+
         events: list[dict[str, Any]] = data.get("eventiTrafficoList", [])
 
         alerts: list[TruckDashboardAlert] = []
@@ -307,7 +317,7 @@ class CcissParser:
             parts = time_str.split(":")
             hour, minute = int(parts[0]), int(parts[1])
             return datetime(int(year), month, int(day), hour, minute, tzinfo=_ROME_TZ)
-        except (ValueError, IndexError):
+        except ValueError, IndexError:
             return None
 
     @classmethod
